@@ -55,6 +55,7 @@ Route::middleware(['auth:member', 'activity'])->prefix('member')->name('member.'
     Route::get('/waiting-approval', [MemberWaitingApprovalController::class, 'show'])->name('waiting-approval');
     Route::get('/waiting-approval/status', [MemberWaitingApprovalController::class, 'status'])->name('waiting-approval.status');
     Route::get('/waiting-approval/qr', [MemberWaitingApprovalController::class, 'downloadQr'])->name('waiting-approval.qr');
+    Route::get('/waiting-approval/qr/image', [MemberWaitingApprovalController::class, 'showQrImage'])->name('waiting-approval.qr.image');
     Route::redirect('/lobby', '/member/waiting-approval');
 
     Route::middleware('member.approved')->group(function () {
@@ -66,6 +67,7 @@ Route::middleware(['auth:member', 'activity'])->prefix('member')->name('member.'
             Route::get('/profile/edit', [ProfileController::class, 'edit'])->name('profile.edit');
             Route::put('/profile', [ProfileController::class, 'update'])->name('profile.update');
             Route::get('/profile/qr', [ProfileController::class, 'downloadQr'])->name('profile.qr');
+            Route::get('/profile/qr/image', [ProfileController::class, 'showQrImage'])->name('profile.qr.image');
 
             Route::get('/events', [EventPoolController::class, 'index'])->name('events.index');
             Route::get('/events/{event}', [EventPoolController::class, 'show'])->name('events.show');
@@ -120,6 +122,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
 
                 Route::get('checked-in', [CheckedInMemberController::class, 'index'])->name('checked-in.index');
                 Route::get('checked-in/members/{member}', [CheckedInMemberController::class, 'show'])->name('checked-in.show');
+                Route::get('checked-in/members/{member}/qr/image', [CheckedInMemberController::class, 'showQrImage'])->name('checked-in.qr.image');
             });
 
             Route::middleware('role:'.UserRole::SUPER_ADMIN.','.UserRole::ADMIN.','.UserRole::VIEWER)->group(function () {
@@ -166,6 +169,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
                 });
                 Route::get('members/{member}', [AdminMemberController::class, 'show'])->name('members.show');
                 Route::get('members/{member}/qr', [AdminMemberController::class, 'downloadQr'])->name('members.qr');
+                Route::get('members/{member}/qr/image', [AdminMemberController::class, 'showQrImage'])->name('members.qr.image');
                 Route::middleware('role:'.UserRole::SUPER_ADMIN.','.UserRole::ADMIN)->group(function () {
                     Route::get('members/{member}/edit', [AdminMemberController::class, 'edit'])->name('members.edit');
                     Route::put('members/{member}', [AdminMemberController::class, 'update'])->name('members.update');
@@ -175,6 +179,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
                     Route::post('members/{member}/events/{event}/kick', [AdminMemberController::class, 'kickFromEvent'])->name('members.events.kick');
                     Route::post('members/{member}/reset-password', [AdminMemberController::class, 'resetPassword'])->name('members.reset-password');
                     Route::post('members/{member}/require-password-change', [AdminMemberController::class, 'requirePasswordChange'])->name('members.require-password-change');
+                    Route::post('members/{member}/qr/regenerate', [AdminMemberController::class, 'regenerateQr'])->name('members.qr.regenerate');
                 });
 
                 Route::get('designations', [DesignationController::class, 'index'])->name('designations.index');

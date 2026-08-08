@@ -17,7 +17,11 @@ class Member extends Authenticatable
     {
         static::saved(function (Member $member) {
             if ($member->unique_id && ($member->wasRecentlyCreated || $member->wasChanged('unique_id'))) {
-                MemberQrCode::store($member->unique_id);
+                try {
+                    MemberQrCode::store($member->unique_id);
+                } catch (\Throwable $e) {
+                    report($e);
+                }
             }
         });
 

@@ -72,16 +72,24 @@
 
         <div data-tab-panel="details" role="tabpanel">
             <div class="grid gap-4 p-5 sm:grid-cols-2 sm:p-8">
-                @if ($qrUrl && $member->unique_id)
+                @if ($member->unique_id)
                     <div class="rounded-xl border border-slate-200 bg-white p-4 sm:col-span-2">
                         <div class="flex flex-col items-center gap-4 sm:flex-row sm:justify-between">
                             <div>
                                 <p class="text-xs font-semibold uppercase text-muted">Membership QR</p>
                                 <p class="mt-1 font-display text-xl font-bold text-brand-blue">{{ $member->unique_id }}</p>
                                 <p class="mt-1 text-sm text-muted">High quality QR generated from Unique ID</p>
-                                <a href="{{ route('admin.members.qr', $member) }}" class="btn-accent mt-4">
-                                    Download high quality QR
-                                </a>
+                                <div class="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+                                    <a href="{{ route('admin.members.qr', $member) }}" class="btn-accent">
+                                        Download high quality QR
+                                    </a>
+                                    @if (auth()->user()->canManageMembers())
+                                        <form method="POST" action="{{ route('admin.members.qr.regenerate', $member) }}" data-confirm="Regenerate QR code for {{ $member->displayName() }}? The Unique ID stays the same; only the image file is recreated.">
+                                            @csrf
+                                            <button type="submit" class="btn-secondary">Regenerate QR</button>
+                                        </form>
+                                    @endif
+                                </div>
                                 <p class="mt-3 text-xs text-muted">
                                     Member downloads:
                                     @if ($member->hasDownloadedQr())
@@ -91,7 +99,9 @@
                                     @endif
                                 </p>
                             </div>
-                            <img src="{{ $qrUrl }}" alt="QR {{ $member->unique_id }}" class="h-44 w-44 rounded-xl border border-slate-100 p-2">
+                            @if ($qrUrl)
+                                <img src="{{ $qrUrl }}?v={{ now()->timestamp }}" alt="QR {{ $member->unique_id }}" class="h-44 w-44 rounded-xl border border-slate-100 bg-white p-2">
+                            @endif
                         </div>
                     </div>
                 @endif

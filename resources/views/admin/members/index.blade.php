@@ -76,6 +76,7 @@
                         <option value="deactivate">Set inactive</option>
                         <option value="require_password_change">Require password change</option>
                         <option value="reset_password">Reset password to default</option>
+                        <option value="regenerate_qr">Regenerate QR codes</option>
                         <option value="delete">Delete</option>
                     </select>
                     <button type="submit" class="bulk-apply btn-primary" disabled>Apply</button>

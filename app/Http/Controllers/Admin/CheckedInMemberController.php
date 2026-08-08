@@ -145,10 +145,26 @@ class CheckedInMemberController extends Controller
 
         return view('admin.checked-in.show', [
             'member' => $member,
-            'qrUrl' => $member->qrCodeUrl(),
+            'qrUrl' => $member->unique_id
+                ? route('admin.checked-in.qr.image', $member)
+                : null,
             'attendances' => $attendances,
             'enrollments' => $member->activeEventEnrollments,
             'removedEnrollments' => $member->eventEnrollments,
         ]);
+    }
+
+    public function showQrImage(Member $member): \Illuminate\Http\Response
+    {
+        if (! $member->unique_id) {
+            abort(404, 'This member does not have a Unique ID yet.');
+        }
+
+        try {
+            return \App\Support\MemberQrCode::imageResponse($member->unique_id);
+        } catch (\Throwable $e) {
+            report($e);
+            abort(500, 'Unable to generate QR code image.');
+        }
     }
 }

@@ -21,7 +21,6 @@ use App\Support\SriLankaFormat;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -164,7 +163,9 @@ class MemberController extends Controller
             'activeEventEnrollments.event',
             'eventEnrollments' => fn ($q) => $q->whereNotNull('kicked_at')->latest('kicked_at')->with(['event', 'kickedBy']),
         ]);
-        $qrUrl = $member->qrCodeUrl();
+        $qrUrl = $member->unique_id
+            ? route('admin.members.qr.image', $member)
+            : null;
 
         $activityQuery = ActivityLog::query()
             ->where(function ($query) use ($member) {
@@ -325,7 +326,7 @@ class MemberController extends Controller
     public function bulk(Request $request): RedirectResponse
     {
         $data = $request->validate([
-            'action' => ['required', 'in:activate,deactivate,require_password_change,reset_password,delete'],
+            'action' => ['required', 'in:activate,deactivate,require_password_change,reset_password,regenerate_qr,delete'],
             'member_ids' => ['required', 'array', 'min:1'],
             'member_ids.*' => ['integer', 'exists:members,id'],
         ]);
@@ -345,6 +346,7 @@ class MemberController extends Controller
                     'password' => $member->defaultPassword(),
                     'must_change_password' => true,
                 ]),
+                'regenerate_qr' => $this->applyRegenerateQr($member),
                 'delete' => $this->applyDelete($member),
             };
 
@@ -358,6 +360,7 @@ class MemberController extends Controller
             'deactivate' => 'deactivated',
             'require_password_change' => 'marked to change password',
             'reset_password' => 'password-reset',
+            'regenerate_qr' => 'QR regenerated',
             'delete' => 'deleted',
         ];
 
@@ -435,13 +438,26 @@ class MemberController extends Controller
         return redirect()->route('admin.members.index')->with('success', 'Member deleted successfully.');
     }
 
-    public function downloadQr(Member $member)
+    public function showQrImage(Member $member): \Illuminate\Http\Response|RedirectResponse
+    {
+        if (! $member->unique_id) {
+            abort(404, 'This member does not have a Unique ID yet.');
+        }
+
+        try {
+            return MemberQrCode::imageResponse($member->unique_id);
+        } catch (\Throwable $e) {
+            report($e);
+            abort(500, 'Unable to generate QR code image.');
+        }
+    }
+
+    public function downloadQr(Member $member): StreamedResponse|RedirectResponse
     {
         if (! $member->unique_id) {
             return back()->with('error', 'This member does not have a Unique ID yet.');
         }
 
-        $path = MemberQrCode::ensure($member->unique_id);
         $filename = MemberQrCode::downloadFilename($member->displayName(), $member->unique_id);
 
         ActivityLogger::log(
@@ -450,7 +466,50 @@ class MemberController extends Controller
             subject: $member,
         );
 
-        return Storage::disk('public')->download($path, $filename);
+        try {
+            return MemberQrCode::downloadResponse($member->unique_id, $filename);
+        } catch (\Throwable $e) {
+            report($e);
+
+            return back()->with('error', 'Unable to download QR code. Try regenerating it first.');
+        }
+    }
+
+    public function regenerateQr(Member $member): RedirectResponse
+    {
+        if (! $this->applyRegenerateQr($member)) {
+            return back()->with('error', 'Unable to regenerate QR code for this member.');
+        }
+
+        ActivityLogger::log(
+            'updated',
+            'Regenerated membership QR: '.$member->displayName(),
+            subject: $member,
+        );
+
+        return back()->with('success', 'QR code regenerated for '.$member->displayName().'.');
+    }
+
+    protected function applyRegenerateQr(Member $member): bool
+    {
+        if (! $member->unique_id) {
+            $member->assignUniqueIdIfMissing();
+            $member->refresh();
+        }
+
+        if (! $member->unique_id) {
+            return false;
+        }
+
+        try {
+            MemberQrCode::regenerate($member->unique_id);
+
+            return true;
+        } catch (\Throwable $e) {
+            report($e);
+
+            return false;
+        }
     }
 
     public function approve(Member $member): RedirectResponse

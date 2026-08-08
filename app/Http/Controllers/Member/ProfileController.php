@@ -14,8 +14,10 @@ use App\Support\SriLankaFormat;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ProfileController extends Controller
@@ -23,9 +25,27 @@ class ProfileController extends Controller
     public function show(): View
     {
         $member = Auth::guard('member')->user()->load(['designation', 'category']);
-        $qrUrl = $member->qrCodeUrl();
+        $qrUrl = $member->unique_id
+            ? route('member.profile.qr.image')
+            : null;
 
         return view('member.profile', compact('member', 'qrUrl'));
+    }
+
+    public function showQrImage(): Response
+    {
+        $member = Auth::guard('member')->user();
+
+        if (! $member->unique_id) {
+            abort(404, 'Unique ID is not available yet.');
+        }
+
+        try {
+            return MemberQrCode::imageResponse($member->unique_id);
+        } catch (\Throwable $e) {
+            report($e);
+            abort(500, 'Unable to generate QR code image.');
+        }
     }
 
     public function downloadQr(): StreamedResponse|RedirectResponse
@@ -36,7 +56,6 @@ class ProfileController extends Controller
             return redirect()->route('member.profile')->with('error', 'Unique ID is not available yet.');
         }
 
-        $path = MemberQrCode::ensure($member->unique_id);
         $filename = MemberQrCode::downloadFilename($member->displayName(), $member->unique_id);
 
         $member->recordQrDownload();
@@ -49,7 +68,13 @@ class ProfileController extends Controller
             causer: $member,
         );
 
-        return Storage::disk('public')->download($path, $filename);
+        try {
+            return MemberQrCode::downloadResponse($member->unique_id, $filename);
+        } catch (\Throwable $e) {
+            report($e);
+
+            return redirect()->route('member.profile')->with('error', 'Unable to download QR code.');
+        }
     }
 
     public function edit(): View
