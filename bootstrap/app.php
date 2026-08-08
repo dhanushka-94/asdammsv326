@@ -23,6 +23,9 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // Plesk nginx → Apache terminates SSL; Laravel must see HTTPS for secure session cookies.
+        $middleware->trustProxies(at: '*');
+
         $middleware->alias([
             'member.approved' => \App\Http\Middleware\EnsureMemberApproved::class,
             'member.password' => \App\Http\Middleware\EnsureMemberPasswordChanged::class,
