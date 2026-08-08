@@ -2,14 +2,14 @@
 
 @section('title', 'My Profile')
 @section('page-title', 'My Profile')
-@section('page-subtitle', 'Your system user account')
+@section('page-subtitle', 'Your account and personal activity')
 
 @section('page-actions')
 <a href="{{ route('admin.profile.edit') }}" class="btn-secondary">Edit profile</a>
 @endsection
 
 @section('content')
-<div class="mx-auto max-w-3xl space-y-5">
+<div class="mx-auto max-w-6xl space-y-5">
     <div class="card overflow-hidden">
         <div class="bg-gradient-to-r from-brand-blue via-brand-green to-brand-orange px-5 py-8 sm:px-8">
             <div class="flex flex-col gap-4 sm:flex-row sm:items-center">
@@ -70,6 +70,91 @@
                 </div>
             @endif
         </div>
+    </div>
+
+    <div class="card" id="activity">
+        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-5 py-4">
+            <div>
+                <h2 class="font-display text-base font-bold text-ink">My activity log</h2>
+                <p class="text-sm text-muted">Actions you performed in the system</p>
+            </div>
+            @if ($user->canManageUsers())
+                <a href="{{ route('admin.activity-logs.index') }}" class="btn-outline">Full system log</a>
+            @endif
+        </div>
+
+        <form method="GET" action="{{ route('admin.profile.show') }}" class="grid gap-3 border-b border-slate-100 p-4 sm:grid-cols-2 lg:grid-cols-5">
+            <div class="sm:col-span-2 lg:col-span-2">
+                <label for="activity-search" class="sr-only">Search activity</label>
+                <input
+                    id="activity-search"
+                    type="search"
+                    name="search"
+                    value="{{ request('search') }}"
+                    class="form-input"
+                    placeholder="Search description, subject, IP…"
+                >
+            </div>
+            <div>
+                <select name="action" class="form-select">
+                    <option value="">All actions</option>
+                    @foreach ($activityActions as $action)
+                        <option value="{{ $action }}" @selected(request('action') === $action)>
+                            {{ ucfirst(str_replace('_', ' ', $action)) }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+            <div>
+                <input type="date" name="date_from" value="{{ request('date_from') }}" class="form-input" title="From date">
+            </div>
+            <div class="flex gap-2">
+                <input type="date" name="date_to" value="{{ request('date_to') }}" class="form-input" title="To date">
+                <button type="submit" class="btn-primary shrink-0">Filter</button>
+                @if (request()->hasAny(['search', 'action', 'date_from', 'date_to']))
+                    <a href="{{ route('admin.profile.show') }}#activity" class="btn-outline shrink-0">Clear</a>
+                @endif
+            </div>
+        </form>
+
+        <div class="table-wrap">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Date &amp; time</th>
+                        <th>Action</th>
+                        <th>Description</th>
+                        <th>Subject</th>
+                        <th>IP</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse ($activityLogs as $log)
+                        <tr>
+                            <td class="whitespace-nowrap text-muted">
+                                <span class="font-medium text-ink">{{ \App\Support\SriLankaDate::date($log->created_at) }}</span>
+                                <br>
+                                <span class="text-xs">{{ \App\Support\SriLankaDate::format($log->created_at, \App\Support\SriLankaDate::TIME) }}</span>
+                            </td>
+                            <td>
+                                <span class="{{ $log->badgeClass() }}">{{ $log->actionLabel() }}</span>
+                            </td>
+                            <td class="max-w-sm text-sm text-ink">{{ $log->description }}</td>
+                            <td class="text-sm text-muted">{{ $log->subject_label ?: '—' }}</td>
+                            <td class="whitespace-nowrap text-xs text-muted">{{ $log->ip_address ?: '—' }}</td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="5" class="py-14 text-center text-muted">No activity recorded for your account yet.</td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+
+        @if ($activityLogs->hasPages())
+            <div class="border-t border-slate-100 px-4 py-3">{{ $activityLogs->fragment('activity')->links() }}</div>
+        @endif
     </div>
 </div>
 @endsection

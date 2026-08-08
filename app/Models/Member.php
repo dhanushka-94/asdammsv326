@@ -101,6 +101,11 @@ class Member extends Authenticatable
             ->withTimestamps();
     }
 
+    public function attendances(): HasMany
+    {
+        return $this->hasMany(EventAttendance::class)->latest('checked_in_at');
+    }
+
     public function isApproved(): bool
     {
         return $this->registration_status === 'approved';

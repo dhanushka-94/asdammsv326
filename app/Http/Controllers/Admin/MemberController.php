@@ -14,6 +14,7 @@ use App\Rules\SriLankanNic;
 use App\Rules\SriLankanPhone;
 use App\Support\ActivityLogger;
 use App\Support\MemberCsvImporter;
+use App\Support\MemberProfileImage;
 use App\Support\MemberQrCode;
 use App\Support\OrgLookups;
 use App\Support\SriLankaFormat;
@@ -134,7 +135,10 @@ class MemberController extends Controller
         $data['unique_id'] = Member::generateUniqueId();
 
         if ($request->hasFile('profile_image')) {
-            $data['profile_image'] = $request->file('profile_image')->store('members/profiles', 'public');
+            $data['profile_image'] = MemberProfileImage::store(
+                $request->file('profile_image'),
+                $data['unique_id'],
+            );
         }
 
         if (($data['registration_status'] ?? 'pending') === 'approved') {
@@ -270,10 +274,15 @@ class MemberController extends Controller
         $data = $this->validatedData($request, $member);
 
         if ($request->hasFile('profile_image')) {
-            if ($member->profile_image) {
-                Storage::disk('public')->delete($member->profile_image);
+            $data['profile_image'] = MemberProfileImage::store(
+                $request->file('profile_image'),
+                $member->unique_id ?: Member::generateUniqueId(),
+                $member->profile_image,
+            );
+
+            if (! $member->unique_id) {
+                $data['unique_id'] = pathinfo(basename($data['profile_image']), PATHINFO_FILENAME);
             }
-            $data['profile_image'] = $request->file('profile_image')->store('members/profiles', 'public');
         }
 
         if ($request->boolean('reset_password')) {
@@ -406,7 +415,7 @@ class MemberController extends Controller
     private function applyDelete(Member $member): bool
     {
         if ($member->profile_image) {
-            Storage::disk('public')->delete($member->profile_image);
+            MemberProfileImage::delete($member->profile_image);
         }
 
         $member->delete();
@@ -417,7 +426,7 @@ class MemberController extends Controller
     public function destroy(Member $member): RedirectResponse
     {
         if ($member->profile_image) {
-            Storage::disk('public')->delete($member->profile_image);
+            MemberProfileImage::delete($member->profile_image);
         }
 
         // QR file is removed in Member::deleting

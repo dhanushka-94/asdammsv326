@@ -28,6 +28,10 @@
                     <svg class="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"/></svg>
                     Event Attendance
                 </a>
+                <a href="{{ route('admin.checked-in.index') }}" class="{{ request()->routeIs('admin.checked-in.*') ? 'sidebar-link-active' : 'sidebar-link' }}">
+                    <svg class="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
+                    Checked-in members
+                </a>
             @else
                 <p class="mb-2 px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-400">Main</p>
                 <a href="{{ route('admin.dashboard') }}" class="{{ request()->routeIs('admin.dashboard') ? 'sidebar-link-active' : 'sidebar-link' }}">
@@ -38,7 +42,12 @@
                 <p class="mb-2 mt-6 px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-400">Members</p>
                 <a href="{{ route('admin.waiting-approvals.index') }}" class="{{ request()->routeIs('admin.waiting-approvals.*') ? 'sidebar-link-active' : 'sidebar-link' }}">
                     <svg class="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                    Waiting Approvals
+                    <span class="flex-1">Waiting Approvals</span>
+                    @if (($pendingApprovalsCount ?? 0) > 0)
+                        <span class="inline-flex min-w-5 items-center justify-center rounded-md bg-brand-orange px-1.5 py-0.5 text-[11px] font-bold leading-none text-white">
+                            {{ $pendingApprovalsCount > 99 ? '99+' : $pendingApprovalsCount }}
+                        </span>
+                    @endif
                 </a>
                 <a href="{{ route('admin.members.index') }}" class="{{ request()->routeIs('admin.members.*') ? 'sidebar-link-active' : 'sidebar-link' }}">
                     <svg class="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
@@ -58,6 +67,10 @@
                     <a href="{{ route('admin.attendance.index') }}" class="{{ request()->routeIs('admin.attendance.*') ? 'sidebar-link-active' : 'sidebar-link' }}">
                         <svg class="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"/></svg>
                         Event Attendance
+                    </a>
+                    <a href="{{ route('admin.checked-in.index') }}" class="{{ request()->routeIs('admin.checked-in.*') ? 'sidebar-link-active' : 'sidebar-link' }}">
+                        <svg class="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
+                        Checked-in members
                     </a>
                 @endif
                 @if (auth()->user()->canViewReports())
@@ -165,6 +178,23 @@
                     </div>
                 </div>
                 <div class="flex items-center gap-2">
+                    @if (! auth()->user()->isReception())
+                        <a
+                            href="{{ route('admin.waiting-approvals.index') }}"
+                            class="relative inline-flex items-center justify-center rounded-xl border border-slate-200 p-2.5 text-muted transition hover:border-brand-orange/30 hover:bg-brand-orange-soft hover:text-brand-orange"
+                            title="Waiting approvals"
+                            aria-label="Waiting approvals{{ ($pendingApprovalsCount ?? 0) > 0 ? ': '.$pendingApprovalsCount.' pending' : '' }}"
+                        >
+                            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V4a2 2 0 10-4 0v1.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+                            </svg>
+                            @if (($pendingApprovalsCount ?? 0) > 0)
+                                <span class="absolute -right-1.5 -top-1.5 inline-flex min-w-5 items-center justify-center rounded-full bg-brand-orange px-1.5 py-0.5 text-[10px] font-bold leading-none text-white ring-2 ring-white">
+                                    {{ $pendingApprovalsCount > 99 ? '99+' : $pendingApprovalsCount }}
+                                </span>
+                            @endif
+                        </a>
+                    @endif
                     @yield('page-actions')
                 </div>
             </div>

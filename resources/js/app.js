@@ -6,6 +6,8 @@
 
 import './bootstrap';
 import Chart from 'chart.js/auto';
+import Cropper from 'cropperjs';
+import 'cropperjs/dist/cropper.css';
 
 const normalizeNic = (value) => {
     let nic = String(value || '')
@@ -1061,6 +1063,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td class="text-muted" data-attendance-items>${itemsBadgesHtml(row.items)}</td>
                 <td class="text-muted whitespace-nowrap">Just now</td>
                 <td><span class="font-semibold text-ink">${escapeHtml(row.officer || '—')}</span></td>
+                <td>${row.profile_url ? `<a href="${escapeHtml(row.profile_url)}" class="btn-outline">View</a>` : ''}</td>
             `;
             checkedList.prepend(tr);
         }
@@ -1078,7 +1081,10 @@ document.addEventListener('DOMContentLoaded', () => {
                         <p class="truncate font-semibold text-ink">${escapeHtml(row.member_name || '—')}</p>
                         <p class="mt-0.5 break-all text-xs font-semibold text-brand-blue">${escapeHtml(row.unique_id || '—')}</p>
                     </div>
-                    <p class="shrink-0 text-xs text-muted">Just now</p>
+                    <div class="shrink-0 text-right">
+                        <p class="text-xs text-muted">Just now</p>
+                        ${row.profile_url ? `<a href="${escapeHtml(row.profile_url)}" class="mt-2 inline-flex text-xs font-semibold text-brand-blue underline">View profile</a>` : ''}
+                    </div>
                 </div>
                 <dl class="mt-3 grid gap-2 text-sm">
                     <div class="flex gap-2">
@@ -1527,3 +1533,158 @@ document.querySelectorAll('[data-report-chart]').forEach((canvas) => {
         },
     });
 });
+
+(() => {
+    const modal = document.getElementById('profile-crop-modal');
+    const cropImage = document.getElementById('profile-crop-image');
+    if (!modal || !cropImage) {
+        return;
+    }
+
+    const backdrop = modal.querySelector('[data-profile-crop-backdrop]');
+    const cancelBtn = modal.querySelector('[data-profile-crop-cancel]');
+    const applyBtn = modal.querySelector('[data-profile-crop-apply]');
+
+    let cropper = null;
+    let activeInput = null;
+    let objectUrl = null;
+
+    const closeModal = () => {
+        if (cropper) {
+            cropper.destroy();
+            cropper = null;
+        }
+        if (objectUrl) {
+            URL.revokeObjectURL(objectUrl);
+            objectUrl = null;
+        }
+        cropImage.removeAttribute('src');
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+        modal.setAttribute('aria-hidden', 'true');
+        activeInput = null;
+    };
+
+    const openModal = (input, file) => {
+        activeInput = input;
+        if (objectUrl) {
+            URL.revokeObjectURL(objectUrl);
+        }
+        objectUrl = URL.createObjectURL(file);
+        cropImage.src = objectUrl;
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        modal.setAttribute('aria-hidden', 'false');
+
+        if (cropper) {
+            cropper.destroy();
+        }
+
+        cropper = new Cropper(cropImage, {
+            aspectRatio: 1,
+            viewMode: 1,
+            dragMode: 'move',
+            autoCropArea: 1,
+            responsive: true,
+            background: false,
+            guides: true,
+            center: true,
+            highlight: false,
+            cropBoxMovable: true,
+            cropBoxResizable: false,
+            toggleDragModeOnDblclick: false,
+            ready() {
+                // Keep square locked — disable free resize handles via cropBoxResizable:false
+            },
+        });
+    };
+
+    const applyCrop = () => {
+        if (!cropper || !activeInput) {
+            return;
+        }
+
+        const canvas = cropper.getCroppedCanvas({
+            width: 800,
+            height: 800,
+            imageSmoothingEnabled: true,
+            imageSmoothingQuality: 'high',
+        });
+
+        if (!canvas) {
+            closeModal();
+            return;
+        }
+
+        canvas.toBlob(
+            (blob) => {
+                if (!blob || !activeInput) {
+                    closeModal();
+                    return;
+                }
+
+                const fileName = 'profile.jpg';
+                const croppedFile = new File([blob], fileName, { type: 'image/jpeg', lastModified: Date.now() });
+                const transfer = new DataTransfer();
+                transfer.items.add(croppedFile);
+                activeInput.files = transfer.files;
+
+                const root = activeInput.closest('[data-profile-image-crop]');
+                const previewWrap = root?.querySelector('[data-profile-image-preview-wrap]');
+                const preview = root?.querySelector('[data-profile-image-preview]');
+                const current = root?.querySelector('[data-profile-image-current]');
+
+                if (preview && previewWrap) {
+                    preview.src = URL.createObjectURL(blob);
+                    previewWrap.classList.remove('hidden');
+                }
+                current?.classList.add('hidden');
+
+                closeModal();
+            },
+            'image/jpeg',
+            0.92,
+        );
+    };
+
+    document.querySelectorAll('[data-profile-image-input]').forEach((input) => {
+        input.addEventListener('change', () => {
+            const file = input.files?.[0];
+            if (!file) {
+                return;
+            }
+            if (!file.type.startsWith('image/')) {
+                input.value = '';
+                return;
+            }
+            openModal(input, file);
+            // Clear native selection until crop is applied
+            input.value = '';
+        });
+    });
+
+    cancelBtn?.addEventListener('click', () => {
+        if (activeInput) {
+            activeInput.value = '';
+        }
+        closeModal();
+    });
+
+    backdrop?.addEventListener('click', () => {
+        if (activeInput) {
+            activeInput.value = '';
+        }
+        closeModal();
+    });
+
+    applyBtn?.addEventListener('click', applyCrop);
+
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && !modal.classList.contains('hidden')) {
+            if (activeInput) {
+                activeInput.value = '';
+            }
+            closeModal();
+        }
+    });
+})();

@@ -91,9 +91,27 @@
                     <label for="address" class="form-label">Address</label>
                     <textarea id="address" name="address" rows="3" class="form-input">{{ old('address', $member->address) }}</textarea>
                 </div>
-                <div class="sm:col-span-2">
+                <div class="sm:col-span-2" data-profile-image-crop>
                     <label for="profile_image" class="form-label">Profile image</label>
-                    <input id="profile_image" type="file" name="profile_image" accept="image/*" class="form-input">
+                    <p class="mb-2 text-xs text-muted">Choose a photo, then crop to a square (1:1).</p>
+                    <input
+                        id="profile_image"
+                        type="file"
+                        name="profile_image"
+                        accept="image/*"
+                        class="form-input"
+                        data-profile-image-input
+                    >
+                    <div class="mt-3 hidden" data-profile-image-preview-wrap>
+                        <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">Cropped preview</p>
+                        <img src="" alt="Cropped preview" class="h-24 w-24 rounded-xl border border-slate-200 object-cover" data-profile-image-preview>
+                    </div>
+                    @if ($member->profile_image)
+                        <div class="mt-3 flex items-center gap-3" data-profile-image-current>
+                            <img src="{{ $member->profileImageUrl() }}" alt="Current photo" class="h-14 w-14 rounded-xl border border-slate-200 object-cover">
+                            <p class="text-xs text-muted">Upload a new image to replace the current one.</p>
+                        </div>
+                    @endif
                 </div>
                 <div>
                     <label for="password" class="form-label">New password <span class="font-normal text-muted">(optional)</span></label>

@@ -10,6 +10,7 @@ use App\Rules\SriLankanNic;
 use App\Rules\SriLankanPhone;
 use App\Support\ActivityLogger;
 use App\Support\AppSettings;
+use App\Support\MemberProfileImage;
 use App\Support\OrgLookups;
 use App\Support\SriLankaFormat;
 use Illuminate\Http\RedirectResponse;
@@ -72,15 +73,18 @@ class RegistrationController extends Controller
             'nic.unique' => 'This NIC number is already registered.',
         ]);
 
-        if ($request->hasFile('profile_image')) {
-            $data['profile_image'] = $request->file('profile_image')->store('members/profiles', 'public');
-        }
-
         $data['unique_id'] = Member::generateUniqueId();
         $data['password'] = Member::defaultPasswordForNic($data['nic']);
         $data['must_change_password'] = true;
         $data['registration_status'] = 'pending';
         $data['status'] = 'inactive';
+
+        if ($request->hasFile('profile_image')) {
+            $data['profile_image'] = MemberProfileImage::store(
+                $request->file('profile_image'),
+                $data['unique_id'],
+            );
+        }
 
         $member = Member::create($data);
 

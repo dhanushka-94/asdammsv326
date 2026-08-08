@@ -3,16 +3,17 @@
 namespace App\Http\Controllers\Member;
 
 use App\Http\Controllers\Controller;
+use App\Models\Member;
 use App\Rules\SriLankanMobile;
 use App\Rules\SriLankanPhone;
 use App\Support\ActivityLogger;
+use App\Support\MemberProfileImage;
 use App\Support\MemberQrCode;
 use App\Support\OrgLookups;
 use App\Support\SriLankaFormat;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -85,10 +86,16 @@ class ProfileController extends Controller
         ]);
 
         if ($request->hasFile('profile_image')) {
-            if ($member->profile_image) {
-                Storage::disk('public')->delete($member->profile_image);
+            $uniqueId = $member->unique_id ?: Member::generateUniqueId();
+            $data['profile_image'] = MemberProfileImage::store(
+                $request->file('profile_image'),
+                $uniqueId,
+                $member->profile_image,
+            );
+
+            if (! $member->unique_id) {
+                $data['unique_id'] = $uniqueId;
             }
-            $data['profile_image'] = $request->file('profile_image')->store('members/profiles', 'public');
         }
 
         if (empty($data['password'])) {

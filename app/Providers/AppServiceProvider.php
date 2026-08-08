@@ -2,11 +2,14 @@
 
 namespace App\Providers;
 
+use App\Models\Member;
 use App\Support\SriLankaDate;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Blade;
+use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
 
@@ -38,6 +41,19 @@ class AppServiceProvider extends ServiceProvider
                 'token' => $token,
                 'email' => $notifiable->getEmailForPasswordReset(),
             ], false));
+        });
+
+        View::composer('layouts.dashboard', function ($view) {
+            $user = Auth::guard('web')->user();
+            $pendingApprovalsCount = 0;
+
+            if ($user && ! $user->isReception()) {
+                $pendingApprovalsCount = Member::query()
+                    ->where('registration_status', 'pending')
+                    ->count();
+            }
+
+            $view->with('pendingApprovalsCount', $pendingApprovalsCount);
         });
     }
 }

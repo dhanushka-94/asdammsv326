@@ -8,6 +8,7 @@
 use App\Http\Controllers\Admin\AttendanceController;
 use App\Http\Controllers\Admin\ActivityLogController;
 use App\Http\Controllers\Admin\CheckInItemController;
+use App\Http\Controllers\Admin\CheckedInMemberController;
 use App\Http\Controllers\Admin\DesignationController;
 use App\Http\Controllers\Admin\EventController as AdminEventController;
 use App\Http\Controllers\Admin\InstituteController;
@@ -116,6 +117,9 @@ Route::prefix('admin')->name('admin.')->group(function () {
                 Route::post('attendance/events/{event}/lookup', [AttendanceController::class, 'lookup'])->name('attendance.lookup');
                 Route::post('attendance/events/{event}/check-in', [AttendanceController::class, 'checkIn'])->name('attendance.check-in');
                 Route::post('attendance/events/{event}/update-items', [AttendanceController::class, 'updateItems'])->name('attendance.update-items');
+
+                Route::get('checked-in', [CheckedInMemberController::class, 'index'])->name('checked-in.index');
+                Route::get('checked-in/members/{member}', [CheckedInMemberController::class, 'show'])->name('checked-in.show');
             });
 
             Route::middleware('role:'.UserRole::SUPER_ADMIN.','.UserRole::ADMIN.','.UserRole::VIEWER)->group(function () {

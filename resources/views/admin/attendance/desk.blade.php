@@ -5,6 +5,7 @@
 @section('page-subtitle', $event->name)
 
 @section('page-actions')
+<a href="{{ route('admin.checked-in.index', ['event' => $event->id]) }}" class="btn-outline shrink-0 whitespace-nowrap">Checked-in list</a>
 @if (auth()->user()->hasDeskPin())
 <form method="POST" action="{{ route('admin.attendance.lock.store') }}" class="inline">
     @csrf
@@ -227,7 +228,12 @@
                             <p class="truncate font-semibold text-ink">{{ $row->member?->displayName() ?: '—' }}</p>
                             <p class="mt-0.5 break-all text-xs font-semibold text-brand-blue">{{ $row->member?->unique_id ?: '—' }}</p>
                         </div>
-                        <p class="shrink-0 text-xs text-muted">{{ \App\Support\SriLankaDate::datetime($row->checked_in_at) }}</p>
+                        <div class="shrink-0 text-right">
+                            <p class="text-xs text-muted">{{ \App\Support\SriLankaDate::datetime($row->checked_in_at) }}</p>
+                            @if ($row->member)
+                                <a href="{{ route('admin.checked-in.show', $row->member) }}" class="mt-2 inline-flex text-xs font-semibold text-brand-blue underline">View profile</a>
+                            @endif
+                        </div>
                     </div>
                     <dl class="mt-3 grid gap-2 text-sm">
                         <div class="flex gap-2">
@@ -276,6 +282,7 @@
                         <th>Items given</th>
                         <th>Checked in</th>
                         <th>Reception officer</th>
+                        <th></th>
                     </tr>
                 </thead>
                 <tbody data-checked-list>
@@ -302,10 +309,15 @@
                                     <span class="mt-0.5 block text-xs text-muted">{{ \App\Support\UserRole::label($row->checkedInBy->role) }}</span>
                                 @endif
                             </td>
+                            <td>
+                                @if ($row->member)
+                                    <a href="{{ route('admin.checked-in.show', $row->member) }}" class="btn-outline">View</a>
+                                @endif
+                            </td>
                         </tr>
                     @empty
                         <tr data-empty-row>
-                            <td colspan="6" class="py-10 text-center text-muted">
+                            <td colspan="7" class="py-10 text-center text-muted">
                                 @if ($checkedInSearch !== '')
                                     No checked-in members match “{{ $checkedInSearch }}”.
                                 @else

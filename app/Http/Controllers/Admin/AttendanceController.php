@@ -515,8 +515,10 @@ class AttendanceController extends Controller
             'attendance' => [
                 'id' => $attendance->id,
                 'checked_in_at' => $attendance->checked_in_at?->toIso8601String(),
+                'member_id' => $member->id,
                 'member_name' => $member->displayName(),
                 'unique_id' => $member->unique_id,
+                'profile_url' => route('admin.checked-in.show', $member),
                 'venue' => $venue?->locationSummary(),
                 'officer' => $user->name,
                 'items' => $itemNames,

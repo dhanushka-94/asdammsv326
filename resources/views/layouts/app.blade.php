@@ -18,5 +18,6 @@
 <body class="min-h-screen">
     @yield('body')
     @include('components.confirm-modal')
+    @include('components.profile-crop-modal')
 </body>
 </html>

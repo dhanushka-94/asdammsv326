@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\ActivityLog;
+use App\Models\User;
 use App\Support\ActivityLogger;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -13,11 +15,48 @@ use Illuminate\View\View;
 
 class ProfileController extends Controller
 {
-    public function show(): View
+    public function show(Request $request): View
     {
         $user = Auth::guard('web')->user();
 
-        return view('admin.profile.show', compact('user'));
+        $logsQuery = ActivityLog::query()
+            ->where('causer_type', User::class)
+            ->where('causer_id', $user->id)
+            ->latest('created_at');
+
+        if ($search = $request->string('search')->trim()->toString()) {
+            $logsQuery->where(function ($q) use ($search) {
+                $q->where('description', 'like', "%{$search}%")
+                    ->orWhere('subject_label', 'like', "%{$search}%")
+                    ->orWhere('ip_address', 'like', "%{$search}%")
+                    ->orWhere('action', 'like', "%{$search}%")
+                    ->orWhere('route_name', 'like', "%{$search}%");
+            });
+        }
+
+        if ($action = $request->string('action')->toString()) {
+            $logsQuery->where('action', $action);
+        }
+
+        if ($dateFrom = $request->string('date_from')->toString()) {
+            $logsQuery->whereDate('created_at', '>=', $dateFrom);
+        }
+
+        if ($dateTo = $request->string('date_to')->toString()) {
+            $logsQuery->whereDate('created_at', '<=', $dateTo);
+        }
+
+        $activityLogs = $logsQuery->paginate(15)->withQueryString();
+
+        $activityActions = ActivityLog::query()
+            ->where('causer_type', User::class)
+            ->where('causer_id', $user->id)
+            ->select('action')
+            ->distinct()
+            ->orderBy('action')
+            ->pluck('action');
+
+        return view('admin.profile.show', compact('user', 'activityLogs', 'activityActions'));
     }
 
     public function edit(): View

@@ -5,6 +5,7 @@
 @section('page-subtitle', 'Reception desk — choose an event, set day & venue, then start attending')
 
 @section('page-actions')
+<a href="{{ route('admin.checked-in.index') }}" class="btn-outline shrink-0 whitespace-nowrap">Checked-in list</a>
 @if (auth()->user()->hasDeskPin())
 <form method="POST" action="{{ route('admin.attendance.lock.store') }}" class="inline">
     @csrf
