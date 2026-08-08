@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Member;
 
 use App\Http\Controllers\Controller;
 use App\Models\Event;
+use App\Support\ActivityLogger;
 use App\Support\EventInvitationPdf;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
@@ -49,7 +50,22 @@ class EventInvitationController extends Controller
         }
 
         try {
-            return EventInvitationPdf::download($event, $member, $type);
+            $response = EventInvitationPdf::download($event, $member, $type);
+
+            ActivityLogger::log(
+                'downloaded',
+                'Downloaded event invitation '.($type === EventInvitationPdf::TYPE_CARD ? 'card' : 'letter')
+                    .' for '.$event->name,
+                subject: $event,
+                guard: 'member',
+                causer: $member,
+                properties: [
+                    'event_id' => $event->id,
+                    'invitation_type' => $type,
+                ],
+            );
+
+            return $response;
         } catch (Throwable) {
             return redirect()
                 ->route('member.events.show', $event)

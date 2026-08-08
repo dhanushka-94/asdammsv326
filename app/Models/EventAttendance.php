@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class EventAttendance extends Model
 {
@@ -52,5 +53,14 @@ class EventAttendance extends Model
     public function checkedInBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'checked_in_by');
+    }
+
+    public function checkInItems(): BelongsToMany
+    {
+        return $this->belongsToMany(CheckInItem::class, 'event_attendance_check_in_item')
+            ->withPivot('given_at')
+            ->withTimestamps()
+            ->orderBy('check_in_items.sort_order')
+            ->orderBy('check_in_items.name');
     }
 }

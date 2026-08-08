@@ -26,6 +26,7 @@
     class="mx-auto w-full max-w-[1600px] space-y-4 sm:space-y-5"
     data-lookup-url="{{ route('admin.attendance.lookup', $event) }}"
     data-checkin-url="{{ route('admin.attendance.check-in', $event) }}"
+    data-update-items-url="{{ route('admin.attendance.update-items', $event) }}"
     data-day-id="{{ $day->id }}"
     data-venue-required="{{ $event->venues->isNotEmpty() ? '1' : '0' }}"
     data-list-page="{{ $checkedIn->currentPage() }}"
@@ -69,7 +70,7 @@
         <section class="card order-1 space-y-4 p-4 sm:p-5 xl:order-2 xl:sticky xl:top-4">
             <div>
                 <h2 class="font-display text-base font-bold text-ink">Member preview</h2>
-                <p class="mt-1 text-sm text-muted">Review details, confirm venue, then check in.</p>
+                <p class="mt-1 text-sm text-muted">Review details, tick items given, then check in.</p>
             </div>
 
             <div data-result-banner class="hidden rounded-xl px-3 py-3 text-sm font-semibold sm:px-4"></div>
@@ -105,21 +106,47 @@
                     </div>
                 </div>
 
-                @if ($event->venues->isNotEmpty())
-                    <div class="min-w-0">
-                        <label for="checkin-venue" class="form-label">Venue for this check-in</label>
-                        <select id="checkin-venue" data-checkin-venue class="form-select">
-                            @foreach ($event->venues as $eventVenue)
-                                <option value="{{ $eventVenue->id }}" @selected($venue && $eventVenue->id === $venue->id)>
-                                    {{ $eventVenue->locationSummary() }}
-                                </option>
+                @if ($event->venues->isNotEmpty() && $venue)
+                    <div class="rounded-xl bg-surface px-3 py-2.5 text-sm">
+                        <p class="text-[11px] font-semibold uppercase tracking-wide text-muted">Check-in venue</p>
+                        <p class="mt-1 font-semibold text-ink">{{ $venue->locationSummary() }}</p>
+                    </div>
+                    <select id="checkin-venue" data-checkin-venue class="sr-only" aria-hidden="true" tabindex="-1">
+                        <option value="{{ $venue->id }}" selected>{{ $venue->locationSummary() }}</option>
+                    </select>
+                @endif
+
+                @if ($checkInItems->isNotEmpty())
+                    <div data-checkin-items>
+                        <div class="flex items-center justify-between gap-2">
+                            <p class="form-label mb-0">Items given at check-in</p>
+                            <button type="button" data-items-select-all class="text-xs font-semibold text-brand-blue hover:underline">Select all</button>
+                        </div>
+                        <div class="mt-2 grid gap-2 sm:grid-cols-2">
+                            @foreach ($checkInItems as $item)
+                                <label class="flex cursor-pointer items-start gap-2 rounded-xl border border-slate-200 bg-surface/50 px-3 py-2.5 text-sm text-ink hover:border-brand-green/40">
+                                    <input
+                                        type="checkbox"
+                                        data-checkin-item
+                                        value="{{ $item->id }}"
+                                        class="mt-0.5 h-4 w-4 rounded border-slate-300 text-brand-green focus:ring-brand-green"
+                                    >
+                                    <span>{{ $item->name }}</span>
+                                </label>
                             @endforeach
-                        </select>
-                        <p class="mt-1 text-xs text-muted">Defaults to your session venue. Change only if this member checked in elsewhere.</p>
+                        </div>
+                        <p class="mt-1 text-xs text-muted">Tick each item handed to this member.</p>
                     </div>
                 @endif
 
-                <button type="button" data-checkin-btn class="btn-primary w-full justify-center py-3 text-sm sm:text-base" disabled>
+                <button
+                    type="button"
+                    data-checkin-btn
+                    data-label-checkin="Check in for {{ $day->dayLabel() }}"
+                    data-label-update="Update items given"
+                    class="btn-primary w-full justify-center py-3 text-sm sm:text-base"
+                    disabled
+                >
                     Check in for {{ $day->dayLabel() }}
                 </button>
             </div>
@@ -194,7 +221,7 @@
 
         <div class="space-y-3 p-4 md:hidden" data-checked-cards>
             @forelse ($checkedIn as $row)
-                <article class="rounded-xl border border-slate-200 bg-surface/40 p-3.5">
+                <article class="rounded-xl border border-slate-200 bg-surface/40 p-3.5" data-attendance-id="{{ $row->id }}">
                     <div class="flex items-start justify-between gap-3">
                         <div class="min-w-0">
                             <p class="truncate font-semibold text-ink">{{ $row->member?->displayName() ?: '—' }}</p>
@@ -206,6 +233,16 @@
                         <div class="flex gap-2">
                             <dt class="w-20 shrink-0 text-xs font-semibold uppercase tracking-wide text-muted">Venue</dt>
                             <dd class="min-w-0 break-words text-ink">{{ $row->venue?->locationSummary() ?: '—' }}</dd>
+                        </div>
+                        <div class="flex gap-2">
+                            <dt class="w-20 shrink-0 text-xs font-semibold uppercase tracking-wide text-muted">Items</dt>
+                            <dd class="min-w-0 break-words text-ink" data-attendance-items>
+                                @if ($row->checkInItems->isNotEmpty())
+                                    {{ $row->checkInItems->pluck('name')->join(', ') }}
+                                @else
+                                    —
+                                @endif
+                            </dd>
                         </div>
                         <div class="flex gap-2">
                             <dt class="w-20 shrink-0 text-xs font-semibold uppercase tracking-wide text-muted">Officer</dt>
@@ -236,16 +273,28 @@
                         <th>Member</th>
                         <th>Unique ID</th>
                         <th>Venue / desk</th>
+                        <th>Items given</th>
                         <th>Checked in</th>
                         <th>Reception officer</th>
                     </tr>
                 </thead>
                 <tbody data-checked-list>
                     @forelse ($checkedIn as $row)
-                        <tr>
+                        <tr data-attendance-id="{{ $row->id }}">
                             <td class="font-semibold text-ink">{{ $row->member?->displayName() ?: '—' }}</td>
                             <td class="text-muted">{{ $row->member?->unique_id ?: '—' }}</td>
                             <td class="text-muted">{{ $row->venue?->locationSummary() ?: '—' }}</td>
+                            <td class="text-muted" data-attendance-items>
+                                @if ($row->checkInItems->isNotEmpty())
+                                    <div class="flex max-w-xs flex-wrap gap-1">
+                                        @foreach ($row->checkInItems as $item)
+                                            <span class="badge-muted">{{ $item->name }}</span>
+                                        @endforeach
+                                    </div>
+                                @else
+                                    —
+                                @endif
+                            </td>
                             <td class="text-muted whitespace-nowrap">{{ \App\Support\SriLankaDate::datetime($row->checked_in_at) }}</td>
                             <td>
                                 <span class="font-semibold text-ink">{{ $row->checkedInBy?->name ?: '—' }}</span>
@@ -256,7 +305,7 @@
                         </tr>
                     @empty
                         <tr data-empty-row>
-                            <td colspan="5" class="py-10 text-center text-muted">
+                            <td colspan="6" class="py-10 text-center text-muted">
                                 @if ($checkedInSearch !== '')
                                     No checked-in members match “{{ $checkedInSearch }}”.
                                 @else

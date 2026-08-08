@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Support\ActivityLogger;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -79,6 +80,14 @@ class ProfileController extends Controller
             $user->clearDeskPin();
             session()->forget(['attendance_desk_locked', 'attendance_desk_lock_return']);
 
+            ActivityLogger::log(
+                'updated',
+                'Removed attendance desk PIN',
+                subject: $user,
+                guard: 'web',
+                causer: $user,
+            );
+
             return redirect()
                 ->route('admin.profile.edit')
                 ->with('success', 'Attendance desk PIN was removed.');
@@ -99,7 +108,16 @@ class ProfileController extends Controller
             return back()->withErrors(['current_desk_pin' => 'Current desk PIN is incorrect.'])->withInput();
         }
 
+        $wasSet = $user->hasDeskPin();
         $user->setDeskPin($data['desk_pin']);
+
+        ActivityLogger::log(
+            'updated',
+            $wasSet ? 'Updated attendance desk PIN' : 'Set attendance desk PIN',
+            subject: $user,
+            guard: 'web',
+            causer: $user,
+        );
 
         return redirect()
             ->route('admin.profile.edit')

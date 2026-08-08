@@ -3,6 +3,8 @@
 namespace App\Support;
 
 use App\Models\ActivityLog;
+use App\Models\CheckInItem;
+use App\Models\Event;
 use App\Models\Member;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
@@ -73,15 +75,20 @@ class ActivityLogger
             'input_keys' => array_keys($request->except([
                 'password',
                 'password_confirmation',
+                'current_password',
+                'desk_pin',
+                'desk_pin_confirmation',
+                'current_desk_pin',
+                'pin',
                 '_token',
                 '_method',
-                'current_password',
             ])),
         ]);
     }
 
     private static function shouldSkipRoute(string $routeName): bool
     {
+        // Noisy / already logged with richer in-controller messages.
         return str_starts_with($routeName, 'admin.activity-logs')
             || in_array($routeName, [
                 'member.waiting-approval.status',
@@ -89,6 +96,22 @@ class ActivityLogger
                 'member.login.store',
                 'admin.logout',
                 'member.logout',
+                'admin.attendance.lookup',
+                'admin.attendance.check-in',
+                'admin.attendance.update-items',
+                'admin.attendance.lock.store',
+                'admin.attendance.unlock',
+                'admin.attendance.start',
+                'admin.profile.desk-pin',
+                'admin.members.bulk',
+                'admin.members.events.kick',
+                'admin.members.re-accept',
+                'admin.waiting-approvals.bulk',
+                'admin.rejected-members.bulk',
+                'member.events.enroll',
+                'member.events.unenroll',
+                'member.register.store',
+                'member.profile.update',
             ], true);
     }
 
@@ -97,7 +120,14 @@ class ActivityLogger
      */
     private static function describeRoute(string $routeName, Request $request): array
     {
+        if ($routeName === 'admin.profile.desk-pin') {
+            return $request->input('action') === 'clear'
+                ? ['updated', 'Removed attendance desk PIN']
+                : ['updated', 'Saved attendance desk PIN'];
+        }
+
         $map = [
+            // Members
             'admin.members.bulk' => ['updated', 'Performed bulk action on members'],
             'admin.members.import.store' => ['created', 'Imported members from CSV'],
             'admin.members.store' => ['created', 'Created a member'],
@@ -109,14 +139,18 @@ class ActivityLogger
             'admin.waiting-approvals.bulk' => ['updated', 'Bulk action on waiting approvals'],
             'admin.rejected-members.bulk' => ['updated', 'Bulk action on rejected members'],
             'admin.members.events.kick' => ['updated', 'Removed a member from an event'],
-            'admin.members.reset-password' => ['password_reset', 'Reset member password to default (first 4 NIC digits + @ASDA)'],
+            'admin.members.reset-password' => ['password_reset', 'Reset member password to default'],
             'admin.members.require-password-change' => ['password_reset', 'Required member to change password on next login'],
-            'admin.users.reset-password' => ['password_reset', 'Reset system user password to default (first 4 phone digits + @ASDA)'],
+
+            // System users
+            'admin.users.reset-password' => ['password_reset', 'Reset system user password to default'],
             'admin.users.require-password-change' => ['password_reset', 'Required system user to change password on next login'],
             'admin.set-password.update' => ['password_changed', 'System user set a new password on forced change'],
             'admin.users.store' => ['created', 'Created a system user'],
             'admin.users.update' => ['updated', 'Updated a system user'],
             'admin.users.destroy' => ['deleted', 'Deleted a system user'],
+
+            // Lookups / settings
             'admin.designations.store' => ['created', 'Created a designation'],
             'admin.designations.update' => ['updated', 'Updated a designation'],
             'admin.designations.destroy' => ['deleted', 'Deleted a designation'],
@@ -136,18 +170,33 @@ class ActivityLogger
             'admin.member-categories.store' => ['created', 'Created a member category'],
             'admin.member-categories.update' => ['updated', 'Updated a member category'],
             'admin.member-categories.destroy' => ['deleted', 'Deleted a member category'],
+            'admin.check-in-items.store' => ['created', 'Created a check-in item'],
+            'admin.check-in-items.update' => ['updated', 'Updated a check-in item'],
+            'admin.check-in-items.destroy' => ['deleted', 'Deleted a check-in item'],
             'admin.settings.update' => ['updated', 'Updated system settings'],
+
+            // Events
             'admin.events.store' => ['created', 'Created an event'],
             'admin.events.update' => ['updated', 'Updated an event'],
             'admin.events.destroy' => ['deleted', 'Deleted an event'],
             'member.events.enroll' => ['created', 'Enrolled in an event'],
             'member.events.unenroll' => ['deleted', 'Left an event'],
+
+            // Attendance desk
+            'admin.attendance.start' => ['updated', 'Started attendance desk session'],
+            'admin.attendance.lock.store' => ['locked', 'Locked attendance desk'],
+            'admin.attendance.unlock' => ['unlocked', 'Unlocked attendance desk'],
+            'admin.attendance.check-in' => ['created', 'Checked in a member'],
+            'admin.attendance.update-items' => ['updated', 'Updated check-in items for a member'],
+
+            // Profiles / auth
             'admin.profile.update' => ['updated', 'Updated own system profile'],
+            'admin.profile.desk-pin' => ['updated', 'Updated attendance desk PIN'],
             'member.register.store' => ['registered', 'Registered as a new member'],
             'member.password.update' => ['password_changed', 'Set a new member password on first login'],
             'member.profile.update' => ['updated', 'Updated member profile'],
             'admin.password.email' => ['password_reset', 'Requested system password reset email'],
-            'admin.password.update' => ['password_reset', 'Reset system user password'],
+            'admin.password.update' => ['password_reset', 'Reset system user password via email link'],
         ];
 
         if (isset($map[$routeName])) {
@@ -171,7 +220,17 @@ class ActivityLogger
             return null;
         }
 
-        foreach (['member', 'user', 'designation', 'member_category', 'event', 'institute', 'sub_institute', 'section'] as $param) {
+        foreach ([
+            'member',
+            'user',
+            'designation',
+            'member_category',
+            'check_in_item',
+            'event',
+            'institute',
+            'sub_institute',
+            'section',
+        ] as $param) {
             $value = $route->parameter($param);
             if ($value instanceof Model) {
                 return $value;
@@ -241,6 +300,14 @@ class ActivityLogger
 
         if ($subject instanceof Member) {
             return $subject->displayName().($subject->unique_id ? ' · '.$subject->unique_id : '');
+        }
+
+        if ($subject instanceof Event) {
+            return $subject->name;
+        }
+
+        if ($subject instanceof CheckInItem) {
+            return $subject->name;
         }
 
         if ($subject && method_exists($subject, 'getAttribute') && $subject->getAttribute('name')) {

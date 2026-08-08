@@ -183,6 +183,12 @@ class User extends Authenticatable
         return $this->isSuperAdmin() || $this->isAdmin();
     }
 
+    /** Super Admin + Admin — manage attendance check-in handout items. */
+    public function canManageCheckInItems(): bool
+    {
+        return $this->isSuperAdmin() || $this->isAdmin();
+    }
+
     /** Super Admin + Admin — manage events. */
     public function canManageEvents(): bool
     {
@@ -206,6 +212,12 @@ class User extends Authenticatable
         }
 
         return $this->receptionEvents()->where('events.id', $event->id)->exists();
+    }
+
+    /** Super Admin, Admin, Viewer — analytics reports. */
+    public function canViewReports(): bool
+    {
+        return $this->isSuperAdmin() || $this->isAdmin() || $this->isViewer();
     }
 
     public function canViewMembers(): bool

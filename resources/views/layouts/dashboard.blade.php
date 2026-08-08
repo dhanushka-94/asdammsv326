@@ -60,6 +60,12 @@
                         Event Attendance
                     </a>
                 @endif
+                @if (auth()->user()->canViewReports())
+                    <a href="{{ route('admin.reports.index') }}" class="{{ request()->routeIs('admin.reports.*') ? 'sidebar-link-active' : 'sidebar-link' }}">
+                        <svg class="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+                        Reports
+                    </a>
+                @endif
 
                 <p class="mb-2 mt-6 px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-400">Settings</p>
                 @php
@@ -67,6 +73,7 @@
                         'admin.settings.*',
                         'admin.designations.*',
                         'admin.member-categories.*',
+                        'admin.check-in-items.*',
                         'admin.institutes.*',
                         'admin.sub-institutes.*',
                         'admin.sections.*',
@@ -92,6 +99,9 @@
                         </a>
                         <a href="{{ route('admin.member-categories.index') }}" class="{{ request()->routeIs('admin.member-categories.*') ? 'sidebar-sublink-active' : 'sidebar-sublink' }}">
                             Member Categories
+                        </a>
+                        <a href="{{ route('admin.check-in-items.index') }}" class="{{ request()->routeIs('admin.check-in-items.*') ? 'sidebar-sublink-active' : 'sidebar-sublink' }}">
+                            Check-in Items
                         </a>
                         <a href="{{ route('admin.institutes.index') }}" class="{{ request()->routeIs('admin.institutes.*') ? 'sidebar-sublink-active' : 'sidebar-sublink' }}">
                             Institutes

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\CheckInItem;
 use App\Models\Event;
 use App\Models\EventAttendance;
 use App\Models\EventDay;
@@ -95,6 +96,14 @@ class AttendanceController extends Controller
             'attendance_desk_lock_return' => $returnTo,
         ]);
 
+        ActivityLogger::log(
+            'locked',
+            'Locked attendance desk',
+            subject: $user,
+            guard: 'web',
+            causer: $user,
+        );
+
         if ($request->expectsJson()) {
             return response()->json([
                 'ok' => true,
@@ -132,6 +141,14 @@ class AttendanceController extends Controller
 
         $returnTo = session('attendance_desk_lock_return', route('admin.attendance.index'));
         session()->forget(['attendance_desk_locked', 'attendance_desk_lock_return']);
+
+        ActivityLogger::log(
+            'unlocked',
+            'Unlocked attendance desk',
+            subject: $user,
+            guard: 'web',
+            causer: $user,
+        );
 
         if ($request->expectsJson()) {
             return response()->json([
@@ -209,6 +226,22 @@ class AttendanceController extends Controller
 
         $this->storeDeskDefaults($event, $day->id, $venue?->id);
 
+        ActivityLogger::log(
+            'updated',
+            'Started attendance desk for '.$event->name
+                .' ('.$day->dayLabel()
+                .($venue ? ' · '.$venue->locationSummary() : '')
+                .')',
+            subject: $event,
+            guard: 'web',
+            causer: $user,
+            properties: [
+                'event_id' => $event->id,
+                'event_day_id' => $day->id,
+                'event_venue_id' => $venue?->id,
+            ],
+        );
+
         return redirect()->route('admin.attendance.desk', $event);
     }
 
@@ -250,7 +283,7 @@ class AttendanceController extends Controller
         $checkedInQuery = EventAttendance::query()
             ->where('event_id', $event->id)
             ->where('event_day_id', $day->id)
-            ->with(['member.designation', 'checkedInBy', 'venue']);
+            ->with(['member.designation', 'checkedInBy', 'venue', 'checkInItems']);
 
         $checkedInTotal = (clone $checkedInQuery)->count();
 
@@ -281,6 +314,9 @@ class AttendanceController extends Controller
                             ->orWhere('floor', 'like', $like)
                             ->orWhere('hall_room', 'like', $like)
                             ->orWhere('description', 'like', $like);
+                    })
+                    ->orWhereHas('checkInItems', function ($itemQuery) use ($like) {
+                        $itemQuery->where('name', 'like', $like);
                     });
             });
         }
@@ -290,6 +326,8 @@ class AttendanceController extends Controller
             ->paginate(20)
             ->withQueryString();
 
+        $checkInItems = CheckInItem::query()->active()->ordered()->get();
+
         return view('admin.attendance.desk', [
             'event' => $event,
             'day' => $day,
@@ -297,6 +335,7 @@ class AttendanceController extends Controller
             'checkedIn' => $checkedIn,
             'checkedInTotal' => $checkedInTotal,
             'checkedInSearch' => $search,
+            'checkInItems' => $checkInItems,
         ]);
     }
 
@@ -379,6 +418,8 @@ class AttendanceController extends Controller
                 'nullable',
                 'integer',
             ],
+            'item_ids' => ['nullable', 'array'],
+            'item_ids.*' => ['integer', 'exists:check_in_items,id'],
         ]);
 
         $day = $this->resolveDay($event, (int) $data['event_day_id']);
@@ -387,6 +428,16 @@ class AttendanceController extends Controller
         if ($requiresVenue) {
             $venue = $this->resolveVenue($event, (int) $data['event_venue_id']);
         }
+
+        $itemIds = collect($data['item_ids'] ?? [])
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values();
+
+        $validItemIds = CheckInItem::query()
+            ->active()
+            ->whereIn('id', $itemIds)
+            ->pluck('id');
 
         $member = Member::query()->findOrFail($data['member_id']);
 
@@ -427,10 +478,22 @@ class AttendanceController extends Controller
             'checked_in_by' => $user->id,
         ]);
 
+        if ($validItemIds->isNotEmpty()) {
+            $sync = [];
+            foreach ($validItemIds as $itemId) {
+                $sync[$itemId] = ['given_at' => now()];
+            }
+            $attendance->checkInItems()->sync($sync);
+        }
+
+        $attendance->load('checkInItems');
+        $itemNames = $attendance->checkInItems->pluck('name')->all();
+
         ActivityLogger::log(
             'created',
             'Checked in '.$member->displayName().' for '.$event->name.' ('.$day->dayLabel().')'
-                .($venue ? ' at '.$venue->locationSummary() : ''),
+                .($venue ? ' at '.$venue->locationSummary() : '')
+                .($itemNames ? ' · items: '.implode(', ', $itemNames) : ''),
             subject: $member,
             guard: 'web',
             causer: $user,
@@ -439,6 +502,7 @@ class AttendanceController extends Controller
                 'event_day_id' => $day->id,
                 'event_venue_id' => $venue?->id,
                 'attendance_id' => $attendance->id,
+                'check_in_item_ids' => $validItemIds->all(),
             ],
         );
 
@@ -446,7 +510,8 @@ class AttendanceController extends Controller
             'ok' => true,
             'status' => 'checked_in',
             'message' => $member->displayName().' checked in for '.$day->dayLabel()
-                .($venue ? ' · '.$venue->locationSummary() : '').'.',
+                .($venue ? ' · '.$venue->locationSummary() : '')
+                .($itemNames ? ' · '.count($itemNames).' item'.(count($itemNames) === 1 ? '' : 's') : '').'.',
             'attendance' => [
                 'id' => $attendance->id,
                 'checked_in_at' => $attendance->checked_in_at?->toIso8601String(),
@@ -454,6 +519,85 @@ class AttendanceController extends Controller
                 'unique_id' => $member->unique_id,
                 'venue' => $venue?->locationSummary(),
                 'officer' => $user->name,
+                'items' => $itemNames,
+            ],
+        ]);
+    }
+
+    public function updateItems(Request $request, Event $event): JsonResponse
+    {
+        $user = Auth::guard('web')->user();
+        $this->ensureCanAccessEvent($user, $event);
+
+        $data = $request->validate([
+            'attendance_id' => ['required', 'integer', 'exists:event_attendances,id'],
+            'item_ids' => ['nullable', 'array'],
+            'item_ids.*' => ['integer', 'exists:check_in_items,id'],
+        ]);
+
+        $attendance = EventAttendance::query()
+            ->where('event_id', $event->id)
+            ->where('id', $data['attendance_id'])
+            ->with(['member', 'day', 'checkInItems'])
+            ->first();
+
+        if (! $attendance) {
+            return response()->json([
+                'ok' => false,
+                'status' => 'not_found',
+                'message' => 'Check-in record not found for this event.',
+            ], 404);
+        }
+
+        $itemIds = collect($data['item_ids'] ?? [])
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values();
+
+        $validItemIds = CheckInItem::query()
+            ->active()
+            ->whereIn('id', $itemIds)
+            ->pluck('id');
+
+        $previousIds = $attendance->checkInItems->pluck('id');
+        $sync = [];
+        foreach ($validItemIds as $itemId) {
+            $sync[$itemId] = [
+                'given_at' => $previousIds->contains($itemId)
+                    ? ($attendance->checkInItems->firstWhere('id', $itemId)?->pivot?->given_at ?? now())
+                    : now(),
+            ];
+        }
+
+        $attendance->checkInItems()->sync($sync);
+        $attendance->load('checkInItems');
+        $itemNames = $attendance->checkInItems->pluck('name')->all();
+
+        ActivityLogger::log(
+            'updated',
+            'Updated check-in items for '.$attendance->member?->displayName()
+                .' ('.$attendance->day?->dayLabel().')'
+                .($itemNames ? ': '.implode(', ', $itemNames) : ': none'),
+            subject: $attendance->member,
+            guard: 'web',
+            causer: $user,
+            properties: [
+                'event_id' => $event->id,
+                'attendance_id' => $attendance->id,
+                'check_in_item_ids' => $validItemIds->all(),
+            ],
+        );
+
+        return response()->json([
+            'ok' => true,
+            'status' => 'items_updated',
+            'message' => 'Items updated for '.$attendance->member?->displayName().'.',
+            'attendance' => [
+                'id' => $attendance->id,
+                'member_name' => $attendance->member?->displayName(),
+                'unique_id' => $attendance->member?->unique_id,
+                'items' => $itemNames,
+                'item_ids' => $validItemIds->all(),
             ],
         ]);
     }
@@ -575,32 +719,36 @@ class AttendanceController extends Controller
         $existing = EventAttendance::query()
             ->where('event_day_id', $day->id)
             ->where('member_id', $member->id)
-            ->with(['checkedInBy:id,name', 'venue'])
+            ->with(['checkedInBy:id,name', 'venue', 'checkInItems'])
             ->first();
 
         if ($existing) {
             return [
-                'ok' => false,
+                'ok' => true,
                 'status' => 'already_checked_in',
-                'message' => 'Already checked in for '.$day->dayLabel().'.',
+                'message' => 'Already checked in for '.$day->dayLabel().'. You can update items given.',
                 'member' => $this->memberPayload($member),
                 'enrollment' => [
                     'participation_mode' => $enrollment->participationModeLabel(),
                     'enrolled_at' => $enrollment->enrolled_at?->toIso8601String(),
                 ],
                 'attendance' => [
+                    'id' => $existing->id,
                     'checked_in_at' => $existing->checked_in_at?->toIso8601String(),
                     'checked_in_by' => $existing->checkedInBy?->name,
                     'venue' => $existing->venue?->locationSummary(),
+                    'item_ids' => $existing->checkInItems->pluck('id')->all(),
+                    'items' => $existing->checkInItems->pluck('name')->all(),
                 ],
                 'can_check_in' => false,
+                'can_update_items' => true,
             ];
         }
 
         return [
             'ok' => true,
             'status' => 'ready',
-            'message' => 'Member found. Select venue (if required) and confirm check-in for '.$day->dayLabel().'.',
+            'message' => 'Member found. Tick items given and confirm check-in for '.$day->dayLabel().'.',
             'member' => $this->memberPayload($member),
             'enrollment' => [
                 'id' => $enrollment->id,
@@ -608,6 +756,7 @@ class AttendanceController extends Controller
                 'enrolled_at' => $enrollment->enrolled_at?->toIso8601String(),
             ],
             'can_check_in' => true,
+            'can_update_items' => false,
         ];
     }
 

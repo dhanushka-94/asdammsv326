@@ -83,6 +83,7 @@
             @if (auth()->user()->canManageEvents())
                 <a href="{{ route('admin.events.create') }}" class="btn-outline w-full justify-start">Add event</a>
             @endif
+            <a href="{{ route('admin.reports.index') }}" class="btn-outline w-full justify-start">Reports</a>
             <a href="{{ route('admin.events.index') }}" class="btn-outline w-full justify-start">ASDA Events</a>
             <a href="{{ route('admin.settings.edit') }}" class="btn-outline w-full justify-start">System Settings</a>
             @if (auth()->user()->canManageUsers())

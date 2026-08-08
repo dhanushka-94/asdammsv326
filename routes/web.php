@@ -7,6 +7,7 @@
 
 use App\Http\Controllers\Admin\AttendanceController;
 use App\Http\Controllers\Admin\ActivityLogController;
+use App\Http\Controllers\Admin\CheckInItemController;
 use App\Http\Controllers\Admin\DesignationController;
 use App\Http\Controllers\Admin\EventController as AdminEventController;
 use App\Http\Controllers\Admin\InstituteController;
@@ -18,6 +19,7 @@ use App\Http\Controllers\Admin\SetPasswordController as AdminSetPasswordControll
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\SubInstituteController;
 use App\Http\Controllers\Admin\RejectedMemberController;
+use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\WaitingApprovalController as AdminWaitingApprovalController;
 use App\Http\Controllers\Auth\ForgotPasswordController;
 use App\Http\Controllers\Auth\LoginController as AdminLoginController;
@@ -113,10 +115,16 @@ Route::prefix('admin')->name('admin.')->group(function () {
                 Route::get('attendance/events/{event}', [AttendanceController::class, 'desk'])->name('attendance.desk');
                 Route::post('attendance/events/{event}/lookup', [AttendanceController::class, 'lookup'])->name('attendance.lookup');
                 Route::post('attendance/events/{event}/check-in', [AttendanceController::class, 'checkIn'])->name('attendance.check-in');
+                Route::post('attendance/events/{event}/update-items', [AttendanceController::class, 'updateItems'])->name('attendance.update-items');
             });
 
             Route::middleware('role:'.UserRole::SUPER_ADMIN.','.UserRole::ADMIN.','.UserRole::VIEWER)->group(function () {
                 Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+
+                Route::get('reports', [ReportController::class, 'index'])->name('reports.index');
+                Route::get('reports/members', [ReportController::class, 'members'])->name('reports.members');
+                Route::get('reports/attendance', [ReportController::class, 'attendance'])->name('reports.attendance');
+                Route::get('reports/items', [ReportController::class, 'items'])->name('reports.items');
 
                 Route::get('waiting-approvals', [AdminWaitingApprovalController::class, 'index'])->name('waiting-approvals.index');
                 Route::middleware('role:'.UserRole::SUPER_ADMIN.','.UserRole::ADMIN)->group(function () {
@@ -216,6 +224,15 @@ Route::prefix('admin')->name('admin.')->group(function () {
                     Route::get('member-categories/{member_category}/edit', [MemberCategoryController::class, 'edit'])->name('member-categories.edit');
                     Route::put('member-categories/{member_category}', [MemberCategoryController::class, 'update'])->name('member-categories.update');
                     Route::delete('member-categories/{member_category}', [MemberCategoryController::class, 'destroy'])->name('member-categories.destroy');
+                });
+
+                Route::get('check-in-items', [CheckInItemController::class, 'index'])->name('check-in-items.index');
+                Route::middleware('role:'.UserRole::SUPER_ADMIN.','.UserRole::ADMIN)->group(function () {
+                    Route::get('check-in-items/create', [CheckInItemController::class, 'create'])->name('check-in-items.create');
+                    Route::post('check-in-items', [CheckInItemController::class, 'store'])->name('check-in-items.store');
+                    Route::get('check-in-items/{check_in_item}/edit', [CheckInItemController::class, 'edit'])->name('check-in-items.edit');
+                    Route::put('check-in-items/{check_in_item}', [CheckInItemController::class, 'update'])->name('check-in-items.update');
+                    Route::delete('check-in-items/{check_in_item}', [CheckInItemController::class, 'destroy'])->name('check-in-items.destroy');
                 });
 
                 Route::get('settings', [SettingsController::class, 'edit'])->name('settings.edit');

@@ -5,6 +5,7 @@
  */
 
 import './bootstrap';
+import Chart from 'chart.js/auto';
 
 const normalizeNic = (value) => {
     let nic = String(value || '')
@@ -844,10 +845,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const lookupUrl = desk.dataset.lookupUrl;
     const checkinUrl = desk.dataset.checkinUrl;
+    const updateItemsUrl = desk.dataset.updateItemsUrl;
     const csrf = desk.dataset.csrf;
     const venueRequired = desk.dataset.venueRequired === '1';
     let dayId = desk.dataset.dayId;
     let currentMemberId = null;
+    let currentAttendanceId = null;
+    let deskMode = 'check_in';
     let lookupLock = false;
     let lastScanned = '';
     let lastScanAt = 0;
@@ -913,12 +917,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const clearPreview = () => {
         currentMemberId = null;
+        currentAttendanceId = null;
+        deskMode = 'check_in';
         emptyState?.classList.remove('hidden');
         memberCard?.classList.add('hidden');
+        setItemChecks([]);
         if (checkinBtn) {
             checkinBtn.disabled = true;
+            checkinBtn.textContent = checkinBtn.dataset.labelCheckin || 'Check in';
         }
     };
+
+    const setItemChecks = (itemIds = []) => {
+        const selected = new Set((itemIds || []).map((id) => String(id)));
+        desk.querySelectorAll('[data-checkin-item]').forEach((input) => {
+            input.checked = selected.has(String(input.value));
+        });
+    };
+
+    const selectedItemIds = () =>
+        Array.from(desk.querySelectorAll('[data-checkin-item]:checked'))
+            .map((input) => Number(input.value))
+            .filter((id) => Number.isFinite(id) && id > 0);
 
     const resetForNextMember = () => {
         clearPreview();
@@ -938,6 +958,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const member = payload.member || {};
         currentMemberId = member.id || null;
+        currentAttendanceId = payload.attendance?.id || null;
+        deskMode = payload.can_update_items ? 'update_items' : 'check_in';
 
         desk.querySelector('[data-member-name]').textContent = member.name || '—';
         desk.querySelector('[data-member-unique]').textContent = member.unique_id || '—';
@@ -958,9 +980,14 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         syncDeskVenueToCheckin();
+        setItemChecks(payload.attendance?.item_ids || []);
 
         if (checkinBtn) {
-            checkinBtn.disabled = !payload.can_check_in;
+            const canAct = Boolean(payload.can_check_in || payload.can_update_items);
+            checkinBtn.disabled = !canAct;
+            checkinBtn.textContent = payload.can_update_items
+                ? checkinBtn.dataset.labelUpdate || 'Update items given'
+                : checkinBtn.dataset.labelCheckin || 'Check in';
         }
     };
 
@@ -984,6 +1011,31 @@ document.addEventListener('DOMContentLoaded', () => {
             .join('');
     };
 
+    const escapeHtml = (value) =>
+        String(value ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+
+    const itemsBadgesHtml = (items) => {
+        if (!Array.isArray(items) || items.length === 0) {
+            return '—';
+        }
+
+        return `<div class="flex max-w-xs flex-wrap gap-1">${items
+            .map((name) => `<span class="badge-muted">${escapeHtml(name)}</span>`)
+            .join('')}</div>`;
+    };
+
+    const itemsText = (items) => {
+        if (!Array.isArray(items) || items.length === 0) {
+            return '—';
+        }
+
+        return items.map((name) => String(name)).join(', ');
+    };
+
     const prependCheckedIn = (row) => {
         const onFirstPage = String(desk.dataset.listPage || '1') === '1';
         const hasListSearch = String(desk.dataset.listSearch || '').trim() !== '';
@@ -999,12 +1051,16 @@ document.addEventListener('DOMContentLoaded', () => {
         if (checkedList) {
             checkedList.querySelector('[data-empty-row]')?.remove();
             const tr = document.createElement('tr');
+            if (row.id) {
+                tr.setAttribute('data-attendance-id', String(row.id));
+            }
             tr.innerHTML = `
-                <td class="font-semibold text-ink">${row.member_name || '—'}</td>
-                <td class="text-muted">${row.unique_id || '—'}</td>
-                <td class="text-muted">${row.venue || '—'}</td>
+                <td class="font-semibold text-ink">${escapeHtml(row.member_name || '—')}</td>
+                <td class="text-muted">${escapeHtml(row.unique_id || '—')}</td>
+                <td class="text-muted">${escapeHtml(row.venue || '—')}</td>
+                <td class="text-muted" data-attendance-items>${itemsBadgesHtml(row.items)}</td>
                 <td class="text-muted whitespace-nowrap">Just now</td>
-                <td><span class="font-semibold text-ink">${row.officer || '—'}</span></td>
+                <td><span class="font-semibold text-ink">${escapeHtml(row.officer || '—')}</span></td>
             `;
             checkedList.prepend(tr);
         }
@@ -1013,27 +1069,55 @@ document.addEventListener('DOMContentLoaded', () => {
             checkedCards.querySelector('[data-empty-cards]')?.remove();
             const card = document.createElement('article');
             card.className = 'rounded-xl border border-slate-200 bg-surface/40 p-3.5';
+            if (row.id) {
+                card.setAttribute('data-attendance-id', String(row.id));
+            }
             card.innerHTML = `
                 <div class="flex items-start justify-between gap-3">
                     <div class="min-w-0">
-                        <p class="truncate font-semibold text-ink">${row.member_name || '—'}</p>
-                        <p class="mt-0.5 break-all text-xs font-semibold text-brand-blue">${row.unique_id || '—'}</p>
+                        <p class="truncate font-semibold text-ink">${escapeHtml(row.member_name || '—')}</p>
+                        <p class="mt-0.5 break-all text-xs font-semibold text-brand-blue">${escapeHtml(row.unique_id || '—')}</p>
                     </div>
                     <p class="shrink-0 text-xs text-muted">Just now</p>
                 </div>
                 <dl class="mt-3 grid gap-2 text-sm">
                     <div class="flex gap-2">
                         <dt class="w-20 shrink-0 text-xs font-semibold uppercase tracking-wide text-muted">Venue</dt>
-                        <dd class="min-w-0 break-words text-ink">${row.venue || '—'}</dd>
+                        <dd class="min-w-0 break-words text-ink">${escapeHtml(row.venue || '—')}</dd>
+                    </div>
+                    <div class="flex gap-2">
+                        <dt class="w-20 shrink-0 text-xs font-semibold uppercase tracking-wide text-muted">Items</dt>
+                        <dd class="min-w-0 break-words text-ink" data-attendance-items>${escapeHtml(itemsText(row.items))}</dd>
                     </div>
                     <div class="flex gap-2">
                         <dt class="w-20 shrink-0 text-xs font-semibold uppercase tracking-wide text-muted">Officer</dt>
-                        <dd class="min-w-0 font-semibold text-ink">${row.officer || '—'}</dd>
+                        <dd class="min-w-0 font-semibold text-ink">${escapeHtml(row.officer || '—')}</dd>
                     </div>
                 </dl>
             `;
             checkedCards.prepend(card);
         }
+    };
+
+    const updateCheckedInItems = (row) => {
+        if (!row?.id) {
+            return;
+        }
+
+        const id = String(row.id);
+        checkedList?.querySelectorAll(`[data-attendance-id="${id}"]`).forEach((tr) => {
+            const cell = tr.querySelector('[data-attendance-items]');
+            if (cell) {
+                cell.innerHTML = itemsBadgesHtml(row.items);
+            }
+        });
+
+        checkedCards?.querySelectorAll(`[data-attendance-id="${id}"]`).forEach((card) => {
+            const cell = card.querySelector('[data-attendance-items]');
+            if (cell) {
+                cell.textContent = itemsText(row.items);
+            }
+        });
     };
 
     const applyLookupPayload = (payload) => {
@@ -1050,10 +1134,10 @@ document.addEventListener('DOMContentLoaded', () => {
             hideMatches();
         }
 
-        if (payload.ok) {
-            setBanner('success', payload.message);
-        } else if (payload.status === 'already_checked_in') {
+        if (payload.status === 'already_checked_in') {
             setBanner('warn', payload.message);
+        } else if (payload.ok) {
+            setBanner('success', payload.message);
         } else {
             setBanner('error', payload.message || 'Lookup failed.');
         }
@@ -1120,40 +1204,61 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const venueId = checkinVenue ? Number(checkinVenue.value) : null;
-        if (venueRequired && !venueId) {
+        if (deskMode === 'check_in' && venueRequired && !venueId) {
             setBanner('error', 'Select a venue before check-in.');
             return;
         }
 
+        if (deskMode === 'update_items' && !currentAttendanceId) {
+            setBanner('error', 'No check-in record found to update.');
+            return;
+        }
+
+        const itemIds = selectedItemIds();
         checkinBtn.disabled = true;
+
         try {
-            const response = await fetch(checkinUrl, {
+            const isUpdate = deskMode === 'update_items';
+            const response = await fetch(isUpdate ? updateItemsUrl : checkinUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     Accept: 'application/json',
                     'X-CSRF-TOKEN': csrf,
                 },
-                body: JSON.stringify({
-                    member_id: currentMemberId,
-                    event_day_id: Number(dayId),
-                    event_venue_id: venueId,
-                }),
+                body: JSON.stringify(
+                    isUpdate
+                        ? {
+                              attendance_id: currentAttendanceId,
+                              item_ids: itemIds,
+                          }
+                        : {
+                              member_id: currentMemberId,
+                              event_day_id: Number(dayId),
+                              event_venue_id: venueId,
+                              item_ids: itemIds,
+                          }
+                ),
             });
             const payload = await response.json();
 
             if (payload.ok) {
-                if (payload.attendance) {
+                if (isUpdate && payload.attendance) {
+                    updateCheckedInItems(payload.attendance);
+                } else if (!isUpdate && payload.attendance) {
                     prependCheckedIn(payload.attendance);
                 }
                 resetForNextMember();
-                setBanner('success', payload.message + ' Ready for the next member.');
+                setBanner(
+                    'success',
+                    (payload.message || (isUpdate ? 'Items updated.' : 'Checked in.')) + ' Ready for the next member.'
+                );
             } else {
-                setBanner(payload.status === 'already_checked_in' ? 'warn' : 'error', payload.message || 'Check-in failed.');
+                setBanner(payload.status === 'already_checked_in' ? 'warn' : 'error', payload.message || 'Action failed.');
                 checkinBtn.disabled = false;
             }
         } catch (error) {
-            setBanner('error', 'Check-in failed. Try again.');
+            setBanner('error', deskMode === 'update_items' ? 'Could not update items. Try again.' : 'Check-in failed. Try again.');
             checkinBtn.disabled = false;
         }
     });
@@ -1164,6 +1269,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     deskVenueSelect?.addEventListener('change', () => {
         syncDeskVenueToCheckin();
+    });
+
+    desk.querySelector('[data-items-select-all]')?.addEventListener('click', () => {
+        const boxes = Array.from(desk.querySelectorAll('[data-checkin-item]'));
+        const allChecked = boxes.length > 0 && boxes.every((box) => box.checked);
+        boxes.forEach((box) => {
+            box.checked = !allChecked;
+        });
     });
 
     syncDeskVenueToCheckin();
@@ -1334,5 +1447,83 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         event.preventDefault();
         lockForm.requestSubmit();
+    });
+});
+
+const reportPalette = ['#0b5d3b', '#1e3a5f', '#c2410c', '#0f766e', '#475569', '#b45309', '#1d4ed8', '#047857'];
+
+const parseChartJson = (value) => {
+    try {
+        return JSON.parse(value || '[]');
+    } catch {
+        return [];
+    }
+};
+
+document.querySelectorAll('[data-report-chart]').forEach((canvas) => {
+    const type = canvas.getAttribute('data-chart-type') || 'bar';
+    const labels = parseChartJson(canvas.getAttribute('data-chart-labels'));
+    const values = parseChartJson(canvas.getAttribute('data-chart-values')).map((v) => Number(v) || 0);
+    const colors = labels.map((_, index) => reportPalette[index % reportPalette.length]);
+    const isDoughnut = type === 'doughnut' || type === 'pie';
+
+    // eslint-disable-next-line no-new
+    new Chart(canvas, {
+        type,
+        data: {
+            labels,
+            datasets: [
+                {
+                    label: 'Count',
+                    data: values,
+                    backgroundColor: isDoughnut || type === 'bar' ? colors : 'rgba(11, 93, 59, 0.18)',
+                    borderColor: isDoughnut ? '#ffffff' : '#0b5d3b',
+                    borderWidth: isDoughnut ? 2 : 2,
+                    borderRadius: type === 'bar' ? 6 : 0,
+                    tension: 0.35,
+                    fill: type === 'line',
+                    pointBackgroundColor: '#0b5d3b',
+                    pointRadius: type === 'line' ? 3 : 0,
+                },
+            ],
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: isDoughnut,
+                    position: 'bottom',
+                    labels: {
+                        boxWidth: 12,
+                        usePointStyle: true,
+                        padding: 16,
+                    },
+                },
+                tooltip: {
+                    backgroundColor: '#132744',
+                    titleFont: { weight: '600' },
+                    padding: 10,
+                },
+            },
+            scales: isDoughnut
+                ? {}
+                : {
+                      x: {
+                          grid: { display: false },
+                          ticks: {
+                              maxRotation: 45,
+                              minRotation: 0,
+                              autoSkip: true,
+                              maxTicksLimit: 12,
+                          },
+                      },
+                      y: {
+                          beginAtZero: true,
+                          ticks: { precision: 0 },
+                          grid: { color: 'rgba(148, 163, 184, 0.25)' },
+                      },
+                  },
+        },
     });
 });
