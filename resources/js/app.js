@@ -1,0 +1,1150 @@
+import './bootstrap';
+
+const normalizeNic = (value) => {
+    let nic = String(value || '')
+        .toUpperCase()
+        .replace(/[\s\-_./]/g, '');
+
+    nic = nic.replace(/[^0-9VX]/g, '');
+
+    // Keep only one trailing letter for old NIC format.
+    const letterMatch = nic.match(/^(\d{0,12})([VX]?).*$/);
+    if (!letterMatch) {
+        return '';
+    }
+
+    let digits = letterMatch[1].slice(0, 12);
+    let letter = letterMatch[2] || '';
+
+    if (digits.length > 9 && letter) {
+        // New NIC is digits-only; drop letter if user typed past 9 digits.
+        if (digits.length >= 12) {
+            letter = '';
+            digits = digits.slice(0, 12);
+        }
+    }
+
+    if (digits.length === 9 && letter) {
+        return digits + letter;
+    }
+
+    if (digits.length > 9) {
+        return digits.slice(0, 12);
+    }
+
+    return digits + letter;
+};
+
+const normalizePhone = (value) => {
+    let phone = String(value || '').trim();
+
+    if (!phone) {
+        return '';
+    }
+
+    // Keep digits; allow a leading + while typing.
+    phone = phone.replace(/[^\d+]/g, '');
+
+    if (phone.startsWith('+')) {
+        phone = phone.slice(1);
+    }
+
+    if (phone.startsWith('94') && phone.length >= 11) {
+        phone = '0' + phone.slice(2);
+    }
+
+    phone = phone.replace(/\D/g, '');
+
+    if (phone && !phone.startsWith('0') && phone.length === 9) {
+        phone = '0' + phone;
+    }
+
+    return phone.slice(0, 10);
+};
+
+const bindAutoCorrect = (selector, formatter, { live = true } = {}) => {
+    document.querySelectorAll(selector).forEach((input) => {
+        const apply = () => {
+            const corrected = formatter(input.value);
+            if (input.value !== corrected) {
+                const start = input.selectionStart;
+                const end = input.selectionEnd;
+                const prevLength = input.value.length;
+                input.value = corrected;
+
+                if (document.activeElement === input && typeof start === 'number') {
+                    const diff = corrected.length - prevLength;
+                    const nextPos = Math.max(0, (end ?? start) + diff);
+                    input.setSelectionRange(nextPos, nextPos);
+                }
+            }
+        };
+
+        if (live) {
+            input.addEventListener('input', apply);
+        }
+
+        input.addEventListener('blur', apply);
+        input.form?.addEventListener('submit', apply);
+        apply();
+    });
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+    const sidebar = document.getElementById('app-sidebar');
+    const overlay = document.getElementById('sidebar-overlay');
+    const openBtn = document.getElementById('sidebar-open');
+    const closeBtn = document.getElementById('sidebar-close');
+
+    const openSidebar = () => {
+        sidebar?.classList.remove('-translate-x-full');
+        overlay?.classList.remove('hidden');
+        document.body.classList.add('overflow-hidden');
+    };
+
+    const closeSidebar = () => {
+        sidebar?.classList.add('-translate-x-full');
+        overlay?.classList.add('hidden');
+        document.body.classList.remove('overflow-hidden');
+    };
+
+    openBtn?.addEventListener('click', openSidebar);
+    closeBtn?.addEventListener('click', closeSidebar);
+    overlay?.addEventListener('click', closeSidebar);
+
+    document.querySelectorAll('[data-sidebar-dropdown]').forEach((dropdown) => {
+        const toggle = dropdown.querySelector('[data-sidebar-dropdown-toggle]');
+        const panel = dropdown.querySelector('[data-sidebar-dropdown-panel]');
+        const chevron = dropdown.querySelector('[data-sidebar-dropdown-chevron]');
+
+        if (!toggle || !panel) {
+            return;
+        }
+
+        const setOpen = (open) => {
+            panel.classList.toggle('hidden', !open);
+            chevron?.classList.toggle('rotate-180', open);
+            toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+            dropdown.dataset.open = open ? '1' : '0';
+        };
+
+        toggle.addEventListener('click', () => {
+            setOpen(dropdown.dataset.open !== '1');
+        });
+    });
+
+    const confirmModal = document.getElementById('confirm-modal');
+    const confirmMessage = document.getElementById('confirm-modal-message');
+    const confirmYes = document.getElementById('confirm-modal-yes');
+    const confirmNo = document.getElementById('confirm-modal-no');
+    const confirmBackdrop = document.getElementById('confirm-modal-backdrop');
+    const confirmMathWrap = document.getElementById('confirm-math-wrap');
+    const confirmMathLabel = document.getElementById('confirm-math-label');
+    const confirmMathInput = document.getElementById('confirm-math-input');
+    const confirmMathError = document.getElementById('confirm-math-error');
+
+    let pendingConfirmAction = null;
+    let expectedMathAnswer = null;
+
+    const openConfirmModal = (message, { requireMath = false } = {}) =>
+        new Promise((resolve) => {
+            if (!confirmModal || !confirmMessage) {
+                resolve(window.confirm(message));
+                return;
+            }
+
+            confirmMessage.textContent = message;
+            confirmMathError?.classList.add('hidden');
+
+            if (requireMath && confirmMathWrap && confirmMathLabel && confirmMathInput) {
+                const a = Math.floor(Math.random() * 8) + 2;
+                const b = Math.floor(Math.random() * 8) + 2;
+                expectedMathAnswer = a + b;
+                confirmMathLabel.textContent = `Solve: ${a} + ${b} = ?`;
+                confirmMathInput.value = '';
+                confirmMathWrap.classList.remove('hidden');
+            } else {
+                expectedMathAnswer = null;
+                confirmMathWrap?.classList.add('hidden');
+            }
+
+            confirmModal.classList.remove('hidden');
+            confirmModal.classList.add('flex');
+            confirmModal.setAttribute('aria-hidden', 'false');
+            document.body.classList.add('overflow-hidden');
+
+            if (requireMath) {
+                confirmMathInput?.focus();
+            } else {
+                confirmYes?.focus();
+            }
+
+            pendingConfirmAction = resolve;
+        });
+
+    const closeConfirmModal = (result) => {
+        if (!confirmModal) {
+            return;
+        }
+
+        confirmModal.classList.add('hidden');
+        confirmModal.classList.remove('flex');
+        confirmModal.setAttribute('aria-hidden', 'true');
+        document.body.classList.remove('overflow-hidden');
+        confirmMathWrap?.classList.add('hidden');
+        expectedMathAnswer = null;
+
+        if (typeof pendingConfirmAction === 'function') {
+            pendingConfirmAction(result);
+            pendingConfirmAction = null;
+        }
+    };
+
+    confirmYes?.addEventListener('click', () => {
+        if (expectedMathAnswer !== null) {
+            const given = Number(confirmMathInput?.value);
+            if (given !== expectedMathAnswer) {
+                confirmMathError?.classList.remove('hidden');
+                confirmMathInput?.focus();
+                return;
+            }
+        }
+
+        closeConfirmModal(true);
+    });
+
+    confirmNo?.addEventListener('click', () => closeConfirmModal(false));
+    confirmBackdrop?.addEventListener('click', () => closeConfirmModal(false));
+
+    confirmMathInput?.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            confirmYes?.click();
+        }
+    });
+
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && confirmModal && !confirmModal.classList.contains('hidden')) {
+            closeConfirmModal(false);
+        }
+    });
+
+    document.querySelectorAll('[data-confirm], [data-math-confirm]').forEach((el) => {
+        const handler = async (event) => {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+
+            const requireMath = el.hasAttribute('data-math-confirm');
+            const message =
+                el.getAttribute(requireMath ? 'data-math-confirm' : 'data-confirm') ||
+                'Are you sure?';
+
+            const confirmed = await openConfirmModal(message, { requireMath });
+
+            if (!confirmed) {
+                return;
+            }
+
+            if (el.tagName === 'FORM') {
+                el.submit();
+                return;
+            }
+
+            if (el.tagName === 'A' && el.href) {
+                window.location.href = el.href;
+            }
+        };
+
+        if (el.tagName === 'FORM') {
+            el.addEventListener('submit', handler);
+        } else {
+            el.addEventListener('click', handler);
+        }
+    });
+
+    bindAutoCorrect('[data-format="sl-nic"]', normalizeNic);
+    bindAutoCorrect('[data-format="sl-phone"]', normalizePhone);
+
+    const waitingCard = document.getElementById('waiting-approval-card');
+    if (waitingCard) {
+        const statusUrl = waitingCard.dataset.statusUrl;
+        const pollMs = Number(waitingCard.dataset.pollMs || 8000);
+        const liveLabel = document.getElementById('waiting-live-label');
+        const refreshBtn = document.getElementById('waiting-refresh');
+
+        const checkStatus = async () => {
+            if (!statusUrl) {
+                return;
+            }
+
+            try {
+                if (liveLabel) {
+                    liveLabel.textContent = 'Checking status…';
+                }
+
+                const response = await fetch(statusUrl, {
+                    headers: {
+                        Accept: 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                });
+
+                if (!response.ok) {
+                    throw new Error('Unable to check status');
+                }
+
+                const data = await response.json();
+
+                if (data.can_login && data.redirect) {
+                    if (liveLabel) {
+                        liveLabel.textContent = 'Approved! Opening your profile…';
+                    }
+                    window.location.href = data.redirect;
+                    return;
+                }
+
+                if (liveLabel) {
+                    const time = new Date().toLocaleTimeString();
+                    liveLabel.textContent = `Still waiting · last checked ${time}`;
+                }
+            } catch (error) {
+                if (liveLabel) {
+                    liveLabel.textContent = 'Could not refresh status. Try again.';
+                }
+            }
+        };
+
+        refreshBtn?.addEventListener('click', checkStatus);
+        window.setInterval(checkStatus, pollMs);
+    }
+
+    document.querySelectorAll('[data-member-bulk-form]').forEach((bulkForm) => {
+        const formId = bulkForm.id;
+        const selectAll = bulkForm.querySelector('.bulk-select-all')
+            || document.querySelector(`.bulk-select-all[form="${formId}"]`);
+        const checkboxes = () => Array.from(
+            document.querySelectorAll(`.member-bulk-checkbox[form="${formId}"]`),
+        );
+        const actionSelect = bulkForm.querySelector('.bulk-action');
+        const applyBtn = bulkForm.querySelector('.bulk-apply');
+        const countLabel = bulkForm.querySelector('.bulk-selected-count');
+
+        const syncBulkUi = () => {
+            const selected = checkboxes().filter((box) => box.checked);
+            const total = checkboxes().length;
+            if (countLabel) {
+                countLabel.textContent = String(selected.length);
+            }
+            if (selectAll) {
+                selectAll.checked = total > 0 && selected.length === total;
+                selectAll.indeterminate = selected.length > 0 && selected.length < total;
+            }
+            const enabled = selected.length > 0;
+            if (actionSelect) {
+                actionSelect.disabled = !enabled;
+            }
+            if (applyBtn) {
+                applyBtn.disabled = !enabled || !actionSelect?.value;
+            }
+        };
+
+        selectAll?.addEventListener('change', () => {
+            checkboxes().forEach((box) => {
+                box.checked = selectAll.checked;
+            });
+            syncBulkUi();
+        });
+
+        document.addEventListener('change', (event) => {
+            if (
+                (event.target?.classList?.contains('member-bulk-checkbox') && event.target.getAttribute('form') === formId)
+                || event.target === actionSelect
+            ) {
+                syncBulkUi();
+            }
+        });
+
+        bulkForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+
+            const selected = checkboxes().filter((box) => box.checked);
+            const action = actionSelect?.value;
+
+            if (!selected.length || !action) {
+                return;
+            }
+
+            const labels = {
+                approve: 'Approve',
+                reject: 'Reject',
+                reaccept: 'Re-accept',
+                activate: 'Activate',
+                deactivate: 'Deactivate',
+                require_password_change: 'Require password change for',
+                reset_password: 'Reset password for',
+                delete: 'Delete',
+            };
+
+            const requireMath = action === 'delete';
+            const message = `${labels[action] || 'Update'} ${selected.length} selected member(s)?`;
+            const confirmed = await openConfirmModal(message, { requireMath });
+
+            if (!confirmed) {
+                return;
+            }
+
+            bulkForm.submit();
+        });
+
+        syncBulkUi();
+    });
+
+    document.querySelectorAll('[data-auto-filter]').forEach((form) => {
+        let searchTimer = null;
+
+        form.querySelectorAll('[data-auto-filter-change]').forEach((el) => {
+            el.addEventListener('change', () => form.requestSubmit());
+        });
+
+        form.querySelectorAll('[data-auto-filter-search]').forEach((el) => {
+            el.addEventListener('input', () => {
+                window.clearTimeout(searchTimer);
+                searchTimer = window.setTimeout(() => form.requestSubmit(), 400);
+            });
+        });
+    });
+
+    document.querySelectorAll('[data-member-tabs]').forEach((root) => {
+        const buttons = Array.from(root.querySelectorAll('[data-tab-btn]'));
+        const panels = Array.from(root.querySelectorAll('[data-tab-panel]'));
+        const defaultTab = root.dataset.defaultTab || buttons[0]?.dataset.tabBtn;
+
+        const activate = (tab) => {
+            buttons.forEach((btn) => {
+                const active = btn.dataset.tabBtn === tab;
+                btn.classList.toggle('is-active', active);
+                btn.setAttribute('aria-selected', active ? 'true' : 'false');
+            });
+            panels.forEach((panel) => {
+                panel.classList.toggle('hidden', panel.dataset.tabPanel !== tab);
+            });
+        };
+
+        buttons.forEach((btn) => {
+            btn.addEventListener('click', () => activate(btn.dataset.tabBtn));
+        });
+
+        activate(defaultTab);
+    });
+
+    const venuesList = document.getElementById('venues-list');
+    const addVenueBtn = document.getElementById('add-venue-btn');
+    const venueTemplate = document.getElementById('venue-block-template');
+
+    if (venuesList && addVenueBtn && venueTemplate) {
+        const venueBlocks = () => Array.from(venuesList.querySelectorAll('.venue-block'));
+
+        const reindexVenues = () => {
+            venueBlocks().forEach((block, index) => {
+                block.dataset.venueIndex = String(index);
+                const number = block.querySelector('.venue-number');
+                if (number) {
+                    number.textContent = String(index + 1);
+                }
+
+                block.querySelectorAll('[name^="venues["]').forEach((input) => {
+                    const name = input.getAttribute('name') || '';
+                    input.setAttribute('name', name.replace(/venues\[\d+]/, `venues[${index}]`));
+                });
+
+                const removeBtn = block.querySelector('.remove-venue-btn');
+                if (removeBtn) {
+                    removeBtn.classList.toggle('hidden', venueBlocks().length <= 1);
+                }
+            });
+        };
+
+        addVenueBtn.addEventListener('click', () => {
+            const index = venueBlocks().length;
+            const html = venueTemplate.innerHTML
+                .replaceAll('__INDEX__', String(index))
+                .replaceAll('__NUMBER__', String(index + 1));
+
+            venuesList.insertAdjacentHTML('beforeend', html);
+            reindexVenues();
+        });
+
+        venuesList.addEventListener('click', (event) => {
+            const button = event.target.closest('.remove-venue-btn');
+            if (!button) {
+                return;
+            }
+
+            const block = button.closest('.venue-block');
+            if (!block || venueBlocks().length <= 1) {
+                return;
+            }
+
+            block.remove();
+            reindexVenues();
+        });
+
+        reindexVenues();
+    }
+
+    const daysList = document.getElementById('days-list');
+    const addDayBtn = document.getElementById('add-day-btn');
+    const dayTemplate = document.getElementById('day-block-template');
+    const sessionTemplate = document.getElementById('session-block-template');
+    const questionTemplate = document.getElementById('question-block-template');
+    const optionTemplate = document.getElementById('option-block-template');
+
+    if (daysList && addDayBtn && dayTemplate) {
+        const maxDays = Number(daysList.dataset.maxDays || 14);
+
+        const dayBlocks = () => Array.from(daysList.querySelectorAll('.day-block'));
+
+        const reindexOptions = (questionBlock, dayIndex, questionIndex) => {
+            const options = Array.from(questionBlock.querySelectorAll('.option-block'));
+            options.forEach((option, optionIndex) => {
+                option.dataset.optionIndex = String(optionIndex);
+                option.querySelectorAll('[name*="[options]"]').forEach((input) => {
+                    const name = input.getAttribute('name') || '';
+                    input.setAttribute(
+                        'name',
+                        name.replace(
+                            /days\[\d+\]\[questions\]\[\d+\]\[options\]\[\d+\]/,
+                            `days[${dayIndex}][questions][${questionIndex}][options][${optionIndex}]`
+                        )
+                    );
+                });
+                const removeBtn = option.querySelector('.remove-option-btn');
+                if (removeBtn) {
+                    removeBtn.classList.toggle('hidden', options.length <= 2);
+                }
+            });
+        };
+
+        const reindexQuestions = (dayBlock, dayIndex) => {
+            const questions = Array.from(dayBlock.querySelectorAll('.question-block'));
+            questions.forEach((question, questionIndex) => {
+                question.dataset.questionIndex = String(questionIndex);
+                const number = question.querySelector('.question-number');
+                if (number) {
+                    number.textContent = String(questionIndex + 1);
+                }
+
+                question.querySelectorAll('[name*="[questions]"]').forEach((input) => {
+                    const name = input.getAttribute('name') || '';
+                    input.setAttribute(
+                        'name',
+                        name.replace(/days\[\d+\]\[questions\]\[\d+\]/, `days[${dayIndex}][questions][${questionIndex}]`)
+                    );
+                });
+
+                reindexOptions(question, dayIndex, questionIndex);
+            });
+        };
+
+        const reindexSessions = (dayBlock, dayIndex) => {
+            const sessions = Array.from(dayBlock.querySelectorAll('.session-block'));
+            sessions.forEach((session, sessionIndex) => {
+                session.dataset.sessionIndex = String(sessionIndex);
+                const number = session.querySelector('.session-number');
+                if (number) {
+                    number.textContent = String(sessionIndex + 1);
+                }
+
+                session.querySelectorAll('[name*="[sessions]"]').forEach((input) => {
+                    const name = input.getAttribute('name') || '';
+                    input.setAttribute(
+                        'name',
+                        name.replace(/days\[\d+\]\[sessions\]\[\d+\]/, `days[${dayIndex}][sessions][${sessionIndex}]`)
+                    );
+                });
+
+                const removeBtn = session.querySelector('.remove-session-btn');
+                if (removeBtn) {
+                    removeBtn.classList.toggle('hidden', sessions.length <= 1);
+                }
+            });
+        };
+
+        const reindexDays = () => {
+            dayBlocks().forEach((block, index) => {
+                block.dataset.dayIndex = String(index);
+                const number = block.querySelector('.day-block-number');
+                if (number) {
+                    number.textContent = String(index + 1);
+                }
+
+                block.querySelectorAll('[name^="days["]').forEach((input) => {
+                    const name = input.getAttribute('name') || '';
+                    input.setAttribute('name', name.replace(/days\[\d+]/, `days[${index}]`));
+                });
+
+                const dayNumberInput = block.querySelector('.day-number-input');
+                if (dayNumberInput && !dayNumberInput.value) {
+                    dayNumberInput.value = String(index + 1);
+                }
+
+                const removeBtn = block.querySelector('.remove-day-btn');
+                if (removeBtn) {
+                    removeBtn.classList.toggle('hidden', dayBlocks().length <= 1);
+                }
+
+                reindexSessions(block, index);
+                reindexQuestions(block, index);
+            });
+
+            addDayBtn.disabled = dayBlocks().length >= maxDays;
+            addDayBtn.classList.toggle('opacity-50', addDayBtn.disabled);
+        };
+
+        addDayBtn.addEventListener('click', () => {
+            if (dayBlocks().length >= maxDays) {
+                return;
+            }
+
+            const index = dayBlocks().length;
+            const html = dayTemplate.innerHTML
+                .replaceAll('__INDEX__', String(index))
+                .replaceAll('__NUMBER__', String(index + 1));
+
+            daysList.insertAdjacentHTML('beforeend', html);
+            reindexDays();
+        });
+
+        daysList.addEventListener('click', (event) => {
+            const addSessionBtn = event.target.closest('.add-session-btn');
+            if (addSessionBtn && sessionTemplate) {
+                const dayBlock = addSessionBtn.closest('.day-block');
+                const sessionsList = dayBlock?.querySelector('.sessions-list');
+                if (!dayBlock || !sessionsList) {
+                    return;
+                }
+
+                const dayIndex = Number(dayBlock.dataset.dayIndex || 0);
+                const sessionIndex = sessionsList.querySelectorAll('.session-block').length;
+                const html = sessionTemplate.innerHTML
+                    .replaceAll('__DAY_INDEX__', String(dayIndex))
+                    .replaceAll('__SESSION_INDEX__', String(sessionIndex))
+                    .replaceAll('__SESSION_NUMBER__', String(sessionIndex + 1));
+
+                sessionsList.insertAdjacentHTML('beforeend', html);
+                reindexSessions(dayBlock, dayIndex);
+                return;
+            }
+
+            const removeSessionBtn = event.target.closest('.remove-session-btn');
+            if (removeSessionBtn) {
+                const dayBlock = removeSessionBtn.closest('.day-block');
+                const session = removeSessionBtn.closest('.session-block');
+                const sessions = dayBlock ? Array.from(dayBlock.querySelectorAll('.session-block')) : [];
+                if (!dayBlock || !session || sessions.length <= 1) {
+                    return;
+                }
+
+                session.remove();
+                reindexSessions(dayBlock, Number(dayBlock.dataset.dayIndex || 0));
+                return;
+            }
+
+            const addQuestionBtn = event.target.closest('.add-question-btn');
+            if (addQuestionBtn && questionTemplate) {
+                const dayBlock = addQuestionBtn.closest('.day-block');
+                const questionsList = dayBlock?.querySelector('.questions-list');
+                if (!dayBlock || !questionsList) {
+                    return;
+                }
+
+                const dayIndex = Number(dayBlock.dataset.dayIndex || 0);
+                const questionIndex = questionsList.querySelectorAll('.question-block').length;
+                const html = questionTemplate.innerHTML
+                    .replaceAll('__DAY_INDEX__', String(dayIndex))
+                    .replaceAll('__QUESTION_INDEX__', String(questionIndex))
+                    .replaceAll('__QUESTION_NUMBER__', String(questionIndex + 1));
+
+                questionsList.insertAdjacentHTML('beforeend', html);
+                reindexQuestions(dayBlock, dayIndex);
+                return;
+            }
+
+            const removeQuestionBtn = event.target.closest('.remove-question-btn');
+            if (removeQuestionBtn) {
+                const dayBlock = removeQuestionBtn.closest('.day-block');
+                const question = removeQuestionBtn.closest('.question-block');
+                if (!dayBlock || !question) {
+                    return;
+                }
+
+                question.remove();
+                reindexQuestions(dayBlock, Number(dayBlock.dataset.dayIndex || 0));
+                return;
+            }
+
+            const addOptionBtn = event.target.closest('.add-option-btn');
+            if (addOptionBtn && optionTemplate) {
+                const dayBlock = addOptionBtn.closest('.day-block');
+                const questionBlock = addOptionBtn.closest('.question-block');
+                const optionsList = questionBlock?.querySelector('.options-list');
+                if (!dayBlock || !questionBlock || !optionsList) {
+                    return;
+                }
+
+                const dayIndex = Number(dayBlock.dataset.dayIndex || 0);
+                const questionIndex = Number(questionBlock.dataset.questionIndex || 0);
+                const optionIndex = optionsList.querySelectorAll('.option-block').length;
+                const html = optionTemplate.innerHTML
+                    .replaceAll('__DAY_INDEX__', String(dayIndex))
+                    .replaceAll('__QUESTION_INDEX__', String(questionIndex))
+                    .replaceAll('__OPTION_INDEX__', String(optionIndex));
+
+                optionsList.insertAdjacentHTML('beforeend', html);
+                reindexOptions(questionBlock, dayIndex, questionIndex);
+                return;
+            }
+
+            const removeOptionBtn = event.target.closest('.remove-option-btn');
+            if (removeOptionBtn) {
+                const dayBlock = removeOptionBtn.closest('.day-block');
+                const questionBlock = removeOptionBtn.closest('.question-block');
+                const option = removeOptionBtn.closest('.option-block');
+                const options = questionBlock ? Array.from(questionBlock.querySelectorAll('.option-block')) : [];
+                if (!dayBlock || !questionBlock || !option || options.length <= 2) {
+                    return;
+                }
+
+                option.remove();
+                reindexOptions(
+                    questionBlock,
+                    Number(dayBlock.dataset.dayIndex || 0),
+                    Number(questionBlock.dataset.questionIndex || 0)
+                );
+                return;
+            }
+
+            const removeDayBtn = event.target.closest('.remove-day-btn');
+            if (!removeDayBtn) {
+                return;
+            }
+
+            const block = removeDayBtn.closest('.day-block');
+            if (!block || dayBlocks().length <= 1) {
+                return;
+            }
+
+            block.remove();
+            reindexDays();
+        });
+
+        reindexDays();
+    }
+
+    document.querySelectorAll('[data-org-cascade]').forEach((root) => {
+        const treeEl = root.querySelector('[data-org-tree]');
+        const instituteSelect = root.querySelector('[data-org-institute]');
+        const subSelect = root.querySelector('[data-org-sub-institute]');
+        const sectionSelect = root.querySelector('[data-org-section]');
+
+        if (!treeEl || !instituteSelect || !subSelect || !sectionSelect) {
+            return;
+        }
+
+        let tree = [];
+        try {
+            tree = JSON.parse(treeEl.textContent || '[]');
+        } catch (e) {
+            tree = [];
+        }
+
+        const fillSelect = (select, items, placeholder, selected) => {
+            const current = selected ?? select.value;
+            select.innerHTML = '';
+            const empty = document.createElement('option');
+            empty.value = '';
+            empty.textContent = placeholder;
+            select.appendChild(empty);
+
+            items.forEach((item) => {
+                const option = document.createElement('option');
+                option.value = item;
+                option.textContent = item;
+                if (item === current) {
+                    option.selected = true;
+                }
+                select.appendChild(option);
+            });
+
+            if (current && !items.includes(current)) {
+                const legacy = document.createElement('option');
+                legacy.value = current;
+                legacy.textContent = `${current} (legacy)`;
+                legacy.selected = true;
+                select.appendChild(legacy);
+            }
+        };
+
+        const refreshSubs = (preserveSection = false) => {
+            const institute = tree.find((item) => item.name === instituteSelect.value);
+            const subs = institute ? institute.sub_institutes.map((s) => s.name) : [];
+            const selectedSub = subSelect.dataset.selected || subSelect.value;
+            fillSelect(subSelect, subs, 'Select sub-institute', selectedSub);
+            subSelect.dataset.selected = '';
+            refreshSections(preserveSection);
+        };
+
+        const refreshSections = () => {
+            const institute = tree.find((item) => item.name === instituteSelect.value);
+            const sub = institute?.sub_institutes?.find((item) => item.name === subSelect.value);
+            const sections = sub ? sub.sections : [];
+            const selectedSection = sectionSelect.dataset.selected || sectionSelect.value;
+            fillSelect(sectionSelect, sections, 'Select section', selectedSection);
+            sectionSelect.dataset.selected = '';
+        };
+
+        instituteSelect.addEventListener('change', () => {
+            subSelect.dataset.selected = '';
+            sectionSelect.dataset.selected = '';
+            refreshSubs();
+        });
+
+        subSelect.addEventListener('change', () => {
+            sectionSelect.dataset.selected = '';
+            refreshSections();
+        });
+
+        refreshSubs(true);
+    });
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+    const roleSelect = document.querySelector('[data-user-role-select]');
+    const receptionEvents = document.querySelector('[data-reception-events]');
+    if (roleSelect && receptionEvents) {
+        const syncReceptionVisibility = () => {
+            receptionEvents.classList.toggle('hidden', roleSelect.value !== 'reception');
+        };
+        roleSelect.addEventListener('change', syncReceptionVisibility);
+        syncReceptionVisibility();
+    }
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+    const desk = document.getElementById('attendance-desk');
+    if (!desk) {
+        return;
+    }
+
+    const lookupUrl = desk.dataset.lookupUrl;
+    const checkinUrl = desk.dataset.checkinUrl;
+    const csrf = desk.dataset.csrf;
+    const venueRequired = desk.dataset.venueRequired === '1';
+    let dayId = desk.dataset.dayId;
+    let currentMemberId = null;
+    let lookupLock = false;
+    let lastScanned = '';
+    let lastScanAt = 0;
+
+    const scanStatus = desk.querySelector('[data-scan-status]');
+    const manualCode = desk.querySelector('[data-manual-code]');
+    const manualLookupBtn = desk.querySelector('[data-manual-lookup]');
+    const matchList = desk.querySelector('[data-match-list]');
+    const banner = desk.querySelector('[data-result-banner]');
+    const emptyState = desk.querySelector('[data-member-empty]');
+    const memberCard = desk.querySelector('[data-member-card]');
+    const checkinBtn = desk.querySelector('[data-checkin-btn]');
+    const checkinVenue = desk.querySelector('[data-checkin-venue]');
+    const checkedList = desk.querySelector('[data-checked-list]');
+    const checkedCount = desk.querySelector('[data-checked-count]');
+    const daySelect = document.getElementById('day');
+
+    const setBanner = (type, message) => {
+        if (!banner) {
+            return;
+        }
+        banner.classList.remove('hidden', 'bg-brand-green-soft', 'text-brand-green', 'border', 'border-brand-green/20');
+        banner.classList.remove('bg-brand-orange-soft', 'text-brand-orange', 'border-brand-orange/20');
+        banner.classList.remove('bg-red-50', 'text-red-700', 'border-red-200');
+        banner.classList.add('border');
+        if (type === 'success') {
+            banner.classList.add('bg-brand-green-soft', 'text-brand-green', 'border-brand-green/20');
+        } else if (type === 'warn') {
+            banner.classList.add('bg-brand-orange-soft', 'text-brand-orange', 'border-brand-orange/20');
+        } else {
+            banner.classList.add('bg-red-50', 'text-red-700', 'border-red-200');
+        }
+        banner.textContent = message;
+    };
+
+    const hideMatches = () => {
+        if (!matchList) {
+            return;
+        }
+        matchList.classList.add('hidden');
+        matchList.innerHTML = '';
+    };
+
+    const clearPreview = () => {
+        currentMemberId = null;
+        emptyState?.classList.remove('hidden');
+        memberCard?.classList.add('hidden');
+        if (checkinBtn) {
+            checkinBtn.disabled = true;
+        }
+    };
+
+    const resetForNextMember = () => {
+        clearPreview();
+        hideMatches();
+        if (manualCode) {
+            manualCode.value = '';
+            manualCode.focus();
+        }
+        lastScanned = '';
+        lastScanAt = 0;
+    };
+
+    const showMember = (payload) => {
+        hideMatches();
+        emptyState?.classList.add('hidden');
+        memberCard?.classList.remove('hidden');
+
+        const member = payload.member || {};
+        currentMemberId = member.id || null;
+
+        desk.querySelector('[data-member-name]').textContent = member.name || '—';
+        desk.querySelector('[data-member-unique]').textContent = member.unique_id || '—';
+        desk.querySelector('[data-member-nic]').textContent = member.nic || '—';
+        desk.querySelector('[data-member-mode]').textContent = payload.enrollment?.participation_mode || '—';
+        desk.querySelector('[data-member-institute]').textContent = member.institute || '—';
+        desk.querySelector('[data-member-meta]').textContent = [member.designation, member.category, member.mobile]
+            .filter(Boolean)
+            .join(' · ') || '—';
+
+        const photoWrap = desk.querySelector('[data-member-photo-wrap]');
+        const photo = desk.querySelector('[data-member-photo]');
+        if (member.photo_url && photo && photoWrap) {
+            photo.src = member.photo_url;
+            photoWrap.classList.remove('hidden');
+        } else if (photoWrap) {
+            photoWrap.classList.add('hidden');
+        }
+
+        if (checkinBtn) {
+            checkinBtn.disabled = !payload.can_check_in;
+        }
+    };
+
+    const showMatches = (matches) => {
+        if (!matchList) {
+            return;
+        }
+        clearPreview();
+        matchList.classList.remove('hidden');
+        matchList.innerHTML = matches
+            .map(
+                (member) => `
+            <button type="button" class="flex w-full items-start justify-between gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-left hover:border-brand-green hover:bg-brand-green-soft" data-pick-member="${member.id}">
+                <span>
+                    <span class="block text-sm font-semibold text-ink">${member.name || '—'}</span>
+                    <span class="mt-0.5 block text-xs text-muted">${[member.unique_id, member.nic, member.mobile].filter(Boolean).join(' · ') || '—'}</span>
+                </span>
+                <span class="shrink-0 text-xs font-semibold text-brand-blue">Select</span>
+            </button>`
+            )
+            .join('');
+    };
+
+    const prependCheckedIn = (row) => {
+        if (!checkedList) {
+            return;
+        }
+        const emptyRow = checkedList.querySelector('[data-empty-row]');
+        emptyRow?.remove();
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td class="font-semibold text-ink">${row.member_name || '—'}</td>
+            <td class="text-muted">${row.unique_id || '—'}</td>
+            <td class="text-muted">${row.venue || '—'}</td>
+            <td class="text-muted">Just now</td>
+            <td class="text-muted">${row.officer || '—'}</td>
+        `;
+        checkedList.prepend(tr);
+
+        if (checkedCount) {
+            checkedCount.textContent = String(Number(checkedCount.textContent || '0') + 1);
+        }
+    };
+
+    const applyLookupPayload = (payload) => {
+        if (payload.status === 'multiple' && Array.isArray(payload.matches)) {
+            showMatches(payload.matches);
+            setBanner('warn', payload.message);
+            return;
+        }
+
+        if (payload.member) {
+            showMember(payload);
+        } else {
+            clearPreview();
+            hideMatches();
+        }
+
+        if (payload.ok) {
+            setBanner('success', payload.message);
+        } else if (payload.status === 'already_checked_in') {
+            setBanner('warn', payload.message);
+        } else {
+            setBanner('error', payload.message || 'Lookup failed.');
+        }
+    };
+
+    const lookup = async (payloadBody) => {
+        if (lookupLock) {
+            return;
+        }
+
+        lookupLock = true;
+        try {
+            const response = await fetch(lookupUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Accept: 'application/json',
+                    'X-CSRF-TOKEN': csrf,
+                },
+                body: JSON.stringify({
+                    event_day_id: Number(dayId),
+                    ...payloadBody,
+                }),
+            });
+            const payload = await response.json();
+            applyLookupPayload(payload);
+        } catch (error) {
+            setBanner('error', 'Could not look up this member. Try again.');
+            clearPreview();
+            hideMatches();
+        } finally {
+            lookupLock = false;
+        }
+    };
+
+    const searchManual = () => {
+        const q = String(manualCode?.value || '').trim();
+        if (!q) {
+            setBanner('error', 'Enter a unique ID, NIC, name, or mobile number.');
+            return;
+        }
+        lookup({ q });
+    };
+
+    manualLookupBtn?.addEventListener('click', searchManual);
+    manualCode?.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            searchManual();
+        }
+    });
+
+    matchList?.addEventListener('click', (event) => {
+        const button = event.target.closest('[data-pick-member]');
+        if (!button) {
+            return;
+        }
+        lookup({ member_id: Number(button.getAttribute('data-pick-member')) });
+    });
+
+    checkinBtn?.addEventListener('click', async () => {
+        if (!currentMemberId || checkinBtn.disabled) {
+            return;
+        }
+
+        const venueId = checkinVenue ? Number(checkinVenue.value) : null;
+        if (venueRequired && !venueId) {
+            setBanner('error', 'Select a venue before check-in.');
+            return;
+        }
+
+        checkinBtn.disabled = true;
+        try {
+            const response = await fetch(checkinUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Accept: 'application/json',
+                    'X-CSRF-TOKEN': csrf,
+                },
+                body: JSON.stringify({
+                    member_id: currentMemberId,
+                    event_day_id: Number(dayId),
+                    event_venue_id: venueId,
+                }),
+            });
+            const payload = await response.json();
+
+            if (payload.ok) {
+                if (payload.attendance) {
+                    prependCheckedIn(payload.attendance);
+                }
+                resetForNextMember();
+                setBanner('success', payload.message + ' Ready for the next member.');
+            } else {
+                setBanner(payload.status === 'already_checked_in' ? 'warn' : 'error', payload.message || 'Check-in failed.');
+                checkinBtn.disabled = false;
+            }
+        } catch (error) {
+            setBanner('error', 'Check-in failed. Try again.');
+            checkinBtn.disabled = false;
+        }
+    });
+
+    daySelect?.addEventListener('change', () => {
+        dayId = daySelect.value;
+    });
+
+    import('html5-qrcode')
+        .then(({ Html5Qrcode }) => {
+            const readerId = 'qr-reader';
+            const scanner = new Html5Qrcode(readerId);
+
+            scanner
+                .start(
+                    { facingMode: 'environment' },
+                    { fps: 8, qrbox: { width: 250, height: 250 } },
+                    (decodedText) => {
+                        const now = Date.now();
+                        const code = String(decodedText || '').trim().toUpperCase();
+                        if (!code) {
+                            return;
+                        }
+                        if (code === lastScanned && now - lastScanAt < 2500) {
+                            return;
+                        }
+                        lastScanned = code;
+                        lastScanAt = now;
+                        if (manualCode) {
+                            manualCode.value = code;
+                        }
+                        lookup({ code });
+                    },
+                    () => {}
+                )
+                .then(() => {
+                    if (scanStatus) {
+                        scanStatus.textContent = 'Camera ready — scan a member QR code.';
+                    }
+                })
+                .catch(() => {
+                    if (scanStatus) {
+                        scanStatus.textContent = 'Camera unavailable. Use search by ID, name, or mobile.';
+                    }
+                });
+        })
+        .catch(() => {
+            if (scanStatus) {
+                scanStatus.textContent = 'Scanner library failed to load. Use search by ID, name, or mobile.';
+            }
+        });
+});
