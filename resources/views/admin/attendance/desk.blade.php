@@ -161,7 +161,10 @@
                 </div>
 
                 <div id="qr-reader" class="attendance-qr-reader overflow-hidden rounded-2xl border border-slate-200 bg-slate-950"></div>
-                <p data-scan-status class="text-xs font-semibold text-muted">Starting camera…</p>
+                <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <p data-scan-status class="text-xs font-semibold text-muted">Starting camera…</p>
+                    <button type="button" data-desk-reset class="btn-outline w-full justify-center sm:w-auto">Reset scan / search</button>
+                </div>
             </section>
 
             <section class="card space-y-3 p-4 sm:space-y-4 sm:p-5">
@@ -180,6 +183,7 @@
                         spellcheck="false"
                     >
                     <button type="button" data-manual-lookup class="btn-secondary w-full shrink-0 justify-center sm:w-auto">Search</button>
+                    <button type="button" data-desk-reset class="btn-outline w-full shrink-0 justify-center sm:w-auto">Reset</button>
                 </div>
 
                 <div data-match-list class="hidden max-h-64 space-y-2 overflow-y-auto rounded-xl border border-slate-200 bg-surface/40 p-3 sm:max-h-80"></div>

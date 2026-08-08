@@ -857,6 +857,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let lookupLock = false;
     let lastScanned = '';
     let lastScanAt = 0;
+    let cameraReady = false;
+    let audioContext = null;
 
     const scanStatus = desk.querySelector('[data-scan-status]');
     const manualCode = desk.querySelector('[data-manual-code]');
@@ -872,6 +874,48 @@ document.addEventListener('DOMContentLoaded', () => {
     const checkedCount = desk.querySelector('[data-checked-count]');
     const daySelect = document.getElementById('day');
     const deskVenueSelect = desk.querySelector('[data-venue-select]');
+
+    const playScanBeep = () => {
+        try {
+            const AudioCtx = window.AudioContext || window.webkitAudioContext;
+            if (!AudioCtx) {
+                return;
+            }
+            if (!audioContext) {
+                audioContext = new AudioCtx();
+            }
+            if (audioContext.state === 'suspended') {
+                audioContext.resume();
+            }
+
+            const now = audioContext.currentTime;
+            const oscillator = audioContext.createOscillator();
+            const gain = audioContext.createGain();
+
+            oscillator.type = 'sine';
+            oscillator.frequency.setValueAtTime(980, now);
+            oscillator.frequency.exponentialRampToValueAtTime(1310, now + 0.08);
+
+            gain.gain.setValueAtTime(0.0001, now);
+            gain.gain.exponentialRampToValueAtTime(0.22, now + 0.01);
+            gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.14);
+
+            oscillator.connect(gain);
+            gain.connect(audioContext.destination);
+            oscillator.start(now);
+            oscillator.stop(now + 0.15);
+        } catch (error) {
+            // Ignore audio failures (autoplay policy / unsupported browsers).
+        }
+    };
+
+    const clearBanner = () => {
+        if (!banner) {
+            return;
+        }
+        banner.classList.add('hidden');
+        banner.textContent = '';
+    };
 
     const syncDeskVenueToCheckin = () => {
         if (!checkinVenue || !deskVenueSelect) {
@@ -951,6 +995,16 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         lastScanned = '';
         lastScanAt = 0;
+    };
+
+    const resetScanAndSearch = () => {
+        resetForNextMember();
+        clearBanner();
+        if (scanStatus) {
+            scanStatus.textContent = cameraReady
+                ? 'Camera ready — scan a member QR code.'
+                : scanStatus.textContent;
+        }
     };
 
     const showMember = (payload) => {
@@ -1196,6 +1250,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    desk.querySelectorAll('[data-desk-reset]').forEach((button) => {
+        button.addEventListener('click', () => {
+            resetScanAndSearch();
+        });
+    });
+
     matchList?.addEventListener('click', (event) => {
         const button = event.target.closest('[data-pick-member]');
         if (!button) {
@@ -1308,25 +1368,32 @@ document.addEventListener('DOMContentLoaded', () => {
                         }
                         lastScanned = code;
                         lastScanAt = now;
+                        playScanBeep();
                         if (manualCode) {
                             manualCode.value = code;
+                        }
+                        if (scanStatus) {
+                            scanStatus.textContent = `Captured: ${code}`;
                         }
                         lookup({ code });
                     },
                     () => {}
                 )
                 .then(() => {
+                    cameraReady = true;
                     if (scanStatus) {
                         scanStatus.textContent = 'Camera ready — scan a member QR code.';
                     }
                 })
                 .catch(() => {
+                    cameraReady = false;
                     if (scanStatus) {
                         scanStatus.textContent = 'Camera unavailable. Use search by ID, name, or mobile.';
                     }
                 });
         })
         .catch(() => {
+            cameraReady = false;
             if (scanStatus) {
                 scanStatus.textContent = 'Scanner library failed to load. Use search by ID, name, or mobile.';
             }
