@@ -1,10 +1,20 @@
 {
     "$schema": "https://getcomposer.org/schema.json",
-    "name": "laravel/laravel",
+    "name": "asda/mms",
     "type": "project",
-    "description": "The skeleton application for the Laravel framework.",
-    "keywords": ["laravel", "framework"],
-    "license": "MIT",
+    "description": "ASDA Member Management System — members, events, enrollments, and reception attendance.",
+    "keywords": ["asda", "mms", "laravel", "members", "events"],
+    "license": "proprietary",
+    "authors": [
+        {
+            "name": "Dhanushka Bandara",
+            "role": "Full Stack Developer"
+        },
+        {
+            "name": "Greshan Bandara",
+            "role": "Full Stack Developer"
+        }
+    ],
     "require": {
         "php": "^8.2",
         "endroid/qr-code": "^6.0",

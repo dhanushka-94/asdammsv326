@@ -1,3 +1,9 @@
+/**
+ * ASDA Member Management System (MMS)
+ * Full Stack Developers: Dhanushka Bandara, Greshan Bandara
+ * Attribution: AUTHORS / CREDITS.md (not shown in the UI)
+ */
+
 import './bootstrap';
 
 const normalizeNic = (value) => {
@@ -858,6 +864,25 @@ document.addEventListener('DOMContentLoaded', () => {
     const checkedList = desk.querySelector('[data-checked-list]');
     const checkedCount = desk.querySelector('[data-checked-count]');
     const daySelect = document.getElementById('day');
+    const deskVenueSelect = desk.querySelector('[data-venue-select]');
+
+    const syncDeskVenueToCheckin = () => {
+        if (!checkinVenue || !deskVenueSelect) {
+            return;
+        }
+        const selectedVenueId = String(deskVenueSelect.value || '');
+        if (!selectedVenueId) {
+            return;
+        }
+        const optionExists = Array.from(checkinVenue.options).some((option) => option.value === selectedVenueId);
+        if (optionExists) {
+            checkinVenue.value = selectedVenueId;
+        }
+
+        desk.querySelectorAll('input[type="hidden"][name="venue"]').forEach((input) => {
+            input.value = selectedVenueId;
+        });
+    };
 
     const setBanner = (type, message) => {
         if (!banner) {
@@ -931,6 +956,8 @@ document.addEventListener('DOMContentLoaded', () => {
             photoWrap.classList.add('hidden');
         }
 
+        syncDeskVenueToCheckin();
+
         if (checkinBtn) {
             checkinBtn.disabled = !payload.can_check_in;
         }
@@ -960,6 +987,18 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!checkedList) {
             return;
         }
+
+        const onFirstPage = String(desk.dataset.listPage || '1') === '1';
+        const hasListSearch = String(desk.dataset.listSearch || '').trim() !== '';
+
+        if (checkedCount) {
+            checkedCount.textContent = String(Number(checkedCount.textContent || '0') + 1);
+        }
+
+        if (!onFirstPage || hasListSearch) {
+            return;
+        }
+
         const emptyRow = checkedList.querySelector('[data-empty-row]');
         emptyRow?.remove();
 
@@ -969,13 +1008,9 @@ document.addEventListener('DOMContentLoaded', () => {
             <td class="text-muted">${row.unique_id || '—'}</td>
             <td class="text-muted">${row.venue || '—'}</td>
             <td class="text-muted">Just now</td>
-            <td class="text-muted">${row.officer || '—'}</td>
+            <td><span class="font-semibold text-ink">${row.officer || '—'}</span></td>
         `;
         checkedList.prepend(tr);
-
-        if (checkedCount) {
-            checkedCount.textContent = String(Number(checkedCount.textContent || '0') + 1);
-        }
     };
 
     const applyLookupPayload = (payload) => {
@@ -1103,6 +1138,12 @@ document.addEventListener('DOMContentLoaded', () => {
     daySelect?.addEventListener('change', () => {
         dayId = daySelect.value;
     });
+
+    deskVenueSelect?.addEventListener('change', () => {
+        syncDeskVenueToCheckin();
+    });
+
+    syncDeskVenueToCheckin();
 
     import('html5-qrcode')
         .then(({ Html5Qrcode }) => {

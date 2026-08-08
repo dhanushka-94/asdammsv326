@@ -16,6 +16,8 @@
     data-checkin-url="{{ route('admin.attendance.check-in', $event) }}"
     data-day-id="{{ $day->id }}"
     data-venue-required="{{ $event->venues->isNotEmpty() ? '1' : '0' }}"
+    data-list-page="{{ $checkedIn->currentPage() }}"
+    data-list-search="{{ $checkedInSearch }}"
     data-csrf="{{ csrf_token() }}"
 >
     <section class="card p-4 sm:p-5">
@@ -32,13 +34,14 @@
             @if ($event->venues->isNotEmpty())
                 <div>
                     <label for="venue" class="form-label">Check-in venue</label>
-                    <select id="venue" name="venue" class="form-select" data-venue-select onchange="this.form.submit()">
+                    <select id="venue" name="venue" class="form-select" data-venue-select>
                         @foreach ($event->venues as $eventVenue)
                             <option value="{{ $eventVenue->id }}" @selected($venue && $eventVenue->id === $venue->id)>
                                 {{ $eventVenue->locationSummary() }}
                             </option>
                         @endforeach
                     </select>
+                    <p class="mt-1 text-xs text-muted">This venue is applied automatically when a member is scanned or searched.</p>
                 </div>
             @else
                 <div class="rounded-xl border border-dashed border-slate-200 bg-surface/60 px-4 py-3 text-sm text-muted">
@@ -47,7 +50,7 @@
             @endif
 
             <p class="text-sm text-muted lg:pb-2">
-                Checked in on this day: <span class="font-semibold text-ink" data-checked-count>{{ $checkedIn->count() }}</span>
+                Checked in on this day: <span class="font-semibold text-ink" data-checked-count>{{ $checkedInTotal }}</span>
             </p>
         </form>
     </section>
@@ -135,6 +138,7 @@
                                 </option>
                             @endforeach
                         </select>
+                        <p class="mt-1 text-xs text-muted">Defaults to the desk venue selected above. Change only if this member checked in elsewhere.</p>
                     </div>
                 @endif
 
@@ -147,8 +151,39 @@
 
     <section class="card overflow-hidden">
         <div class="border-b border-slate-100 px-5 py-4">
-            <h2 class="font-display text-base font-bold text-ink">Checked in — {{ $day->dayLabel() }}</h2>
-            <p class="mt-1 text-sm text-muted">Latest check-ins on this reception desk day.</p>
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                    <h2 class="font-display text-base font-bold text-ink">All check-ins — {{ $day->dayLabel() }}</h2>
+                    <p class="mt-1 text-sm text-muted">
+                        @if ($checkedInSearch !== '')
+                            Showing {{ $checkedIn->total() }} match{{ $checkedIn->total() === 1 ? '' : 'es' }} of {{ $checkedInTotal }} check-in{{ $checkedInTotal === 1 ? '' : 's' }} across all venues.
+                        @else
+                            Every member checked in for this day across all attendance desks and venues. Reception officer shows who processed each check-in.
+                        @endif
+                    </p>
+                </div>
+
+                <form method="GET" action="{{ route('admin.attendance.desk', $event) }}" class="flex w-full gap-2 sm:w-auto sm:min-w-[22rem]" data-auto-filter>
+                    <input type="hidden" name="day" value="{{ $day->id }}">
+                    @if ($venue)
+                        <input type="hidden" name="venue" value="{{ $venue->id }}">
+                    @endif
+                    <input
+                        type="search"
+                        name="search"
+                        value="{{ $checkedInSearch }}"
+                        class="form-input flex-1"
+                        placeholder="Search member, venue, or reception officer…"
+                        data-auto-filter-search
+                    >
+                    @if ($checkedInSearch !== '')
+                        <a
+                            href="{{ route('admin.attendance.desk', ['event' => $event, 'day' => $day->id, 'venue' => $venue?->id]) }}"
+                            class="btn-outline shrink-0"
+                        >Clear</a>
+                    @endif
+                </form>
+            </div>
         </div>
         <div class="table-wrap">
             <table class="data-table">
@@ -156,9 +191,9 @@
                     <tr>
                         <th>Member</th>
                         <th>Unique ID</th>
-                        <th>Venue</th>
+                        <th>Venue / desk</th>
                         <th>Checked in</th>
-                        <th>Officer</th>
+                        <th>Reception officer</th>
                     </tr>
                 </thead>
                 <tbody data-checked-list>
@@ -168,16 +203,32 @@
                             <td class="text-muted">{{ $row->member?->unique_id ?: '—' }}</td>
                             <td class="text-muted">{{ $row->venue?->locationSummary() ?: '—' }}</td>
                             <td class="text-muted">{{ \App\Support\SriLankaDate::datetime($row->checked_in_at) }}</td>
-                            <td class="text-muted">{{ $row->checkedInBy?->name ?: '—' }}</td>
+                            <td>
+                                <span class="font-semibold text-ink">{{ $row->checkedInBy?->name ?: '—' }}</span>
+                                @if ($row->checkedInBy?->role)
+                                    <span class="mt-0.5 block text-xs text-muted">{{ \App\Support\UserRole::label($row->checkedInBy->role) }}</span>
+                                @endif
+                            </td>
                         </tr>
                     @empty
                         <tr data-empty-row>
-                            <td colspan="5" class="py-10 text-center text-muted">No check-ins for this day yet.</td>
+                            <td colspan="5" class="py-10 text-center text-muted">
+                                @if ($checkedInSearch !== '')
+                                    No checked-in members match “{{ $checkedInSearch }}”.
+                                @else
+                                    No check-ins for this day yet from any attendance desk.
+                                @endif
+                            </td>
                         </tr>
                     @endforelse
                 </tbody>
             </table>
         </div>
+        @if ($checkedIn->hasPages())
+            <div class="border-t border-slate-100 px-5 py-3">
+                {{ $checkedIn->links() }}
+            </div>
+        @endif
     </section>
 </div>
 @endsection

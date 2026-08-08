@@ -1,5 +1,15 @@
 <?php
 
+/**
+ * ASDA Member Management System (MMS)
+ *
+ * Full Stack Developers:
+ * - Dhanushka Bandara
+ * - Greshan Bandara
+ *
+ * See AUTHORS and CREDITS.md for project attribution (not shown in the UI).
+ */
+
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;

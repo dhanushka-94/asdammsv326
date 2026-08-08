@@ -19,7 +19,10 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-        date_default_timezone_set(config('app.timezone', SriLankaDate::TIMEZONE));
+        $timezone = config('app.timezone', SriLankaDate::TIMEZONE) ?: SriLankaDate::TIMEZONE;
+
+        date_default_timezone_set($timezone);
+        config(['app.timezone' => $timezone]);
         Carbon::setLocale(config('app.locale', 'en'));
 
         Password::defaults(fn () => Password::min(8));

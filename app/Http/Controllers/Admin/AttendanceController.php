@@ -68,18 +68,56 @@ class AttendanceController extends Controller
             ? $event->venues->firstWhere('id', $selectedVenueId)
             : null;
 
-        $checkedIn = EventAttendance::query()
+        $checkedInQuery = EventAttendance::query()
             ->where('event_id', $event->id)
             ->where('event_day_id', $day->id)
-            ->with(['member.designation', 'checkedInBy', 'venue'])
+            ->with(['member.designation', 'checkedInBy', 'venue']);
+
+        $checkedInTotal = (clone $checkedInQuery)->count();
+
+        $search = trim((string) $request->input('search', ''));
+        if ($search !== '') {
+            $like = '%'.$search.'%';
+            $digits = preg_replace('/\D+/', '', $search) ?? '';
+
+            $checkedInQuery->where(function ($query) use ($like, $digits) {
+                $query->whereHas('member', function ($memberQuery) use ($like, $digits) {
+                    $memberQuery->where('full_name', 'like', $like)
+                        ->orWhere('unique_id', 'like', $like)
+                        ->orWhere('nic', 'like', $like)
+                        ->orWhereRaw("CONCAT(COALESCE(title, ''), ' ', full_name) like ?", [$like]);
+
+                    if ($digits !== '') {
+                        $memberQuery->orWhere('mobile_1', 'like', '%'.$digits.'%')
+                            ->orWhere('mobile_2', 'like', '%'.$digits.'%')
+                            ->orWhere('whatsapp', 'like', '%'.$digits.'%');
+                    }
+                })
+                    ->orWhereHas('checkedInBy', function ($officerQuery) use ($like) {
+                        $officerQuery->where('name', 'like', $like)
+                            ->orWhere('email', 'like', $like);
+                    })
+                    ->orWhereHas('venue', function ($venueQuery) use ($like) {
+                        $venueQuery->where('name', 'like', $like)
+                            ->orWhere('floor', 'like', $like)
+                            ->orWhere('hall_room', 'like', $like)
+                            ->orWhere('description', 'like', $like);
+                    });
+            });
+        }
+
+        $checkedIn = $checkedInQuery
             ->latest('checked_in_at')
-            ->get();
+            ->paginate(20)
+            ->withQueryString();
 
         return view('admin.attendance.desk', [
             'event' => $event,
             'day' => $day,
             'venue' => $venue,
             'checkedIn' => $checkedIn,
+            'checkedInTotal' => $checkedInTotal,
+            'checkedInSearch' => $search,
         ]);
     }
 
