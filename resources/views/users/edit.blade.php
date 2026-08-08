@@ -10,7 +10,7 @@
 
 @section('content')
 <div class="mx-auto max-w-3xl">
-    <form method="POST" action="{{ route('admin.users.update', $user) }}" class="card p-5 sm:p-8">
+    <form method="POST" action="{{ route('admin.users.update', $user) }}" enctype="multipart/form-data" class="card p-5 sm:p-8">
         @csrf
         @method('PUT')
         @include('users._form', ['user' => $user])

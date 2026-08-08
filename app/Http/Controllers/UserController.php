@@ -6,6 +6,7 @@ use App\Http\Requests\StoreUserRequest;
 use App\Http\Requests\UpdateUserRequest;
 use App\Models\Event;
 use App\Models\User;
+use App\Support\UserProfileImage;
 use App\Support\UserRole;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -49,11 +50,20 @@ class UserController extends Controller
     {
         $data = $request->validated();
         $eventIds = $data['event_ids'] ?? [];
-        unset($data['event_ids']);
+        unset($data['event_ids'], $data['profile_image']);
         $data['must_change_password'] = true;
 
         $user = User::create($data);
         $this->syncReceptionEvents($user, $eventIds);
+
+        if ($request->hasFile('profile_image')) {
+            $user->update([
+                'profile_image' => UserProfileImage::store(
+                    $request->file('profile_image'),
+                    $user->id,
+                ),
+            ]);
+        }
 
         return redirect()
             ->route('admin.users.index')
@@ -79,7 +89,7 @@ class UserController extends Controller
     {
         $data = $request->validated();
         $eventIds = $data['event_ids'] ?? [];
-        unset($data['event_ids']);
+        unset($data['event_ids'], $data['profile_image']);
 
         if (empty($data['password'])) {
             unset($data['password']);
@@ -97,6 +107,14 @@ class UserController extends Controller
             && User::where('role', UserRole::SUPER_ADMIN)->count() <= 1
         ) {
             return back()->with('error', 'Cannot demote the last Super Admin user.');
+        }
+
+        if ($request->hasFile('profile_image')) {
+            $data['profile_image'] = UserProfileImage::store(
+                $request->file('profile_image'),
+                $user->id,
+                $user->profile_image,
+            );
         }
 
         $user->update($data);
@@ -117,6 +135,7 @@ class UserController extends Controller
             return back()->with('error', 'Cannot delete the last Super Admin user.');
         }
 
+        UserProfileImage::delete($user->profile_image);
         $user->delete();
 
         return redirect()

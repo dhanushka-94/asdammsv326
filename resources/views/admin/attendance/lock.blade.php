@@ -18,8 +18,12 @@
 
         <div class="rounded-3xl border border-white/10 bg-white/5 px-4 py-4 text-left backdrop-blur">
             <div class="flex items-center gap-3">
-                <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-brand-green/20 text-lg font-bold text-brand-green">
-                    {{ strtoupper(substr($user->name, 0, 1)) }}
+                <div class="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-brand-green/20 text-lg font-bold text-brand-green">
+                    @if ($user->profileImageUrl())
+                        <img src="{{ $user->profileImageUrl() }}" alt="" class="h-full w-full object-cover">
+                    @else
+                        {{ strtoupper(substr($user->name, 0, 1)) }}
+                    @endif
                 </div>
                 <div class="min-w-0">
                     <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Reception officer</p>

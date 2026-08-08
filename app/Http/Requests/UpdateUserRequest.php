@@ -31,6 +31,7 @@ class UpdateUserRequest extends FormRequest
             'role' => ['required', UserRole::validationRule()],
             'status' => ['required', 'in:active,inactive'],
             'password' => ['nullable', 'confirmed', Password::defaults()],
+            'profile_image' => ['nullable', 'image', 'max:2048'],
             'event_ids' => ['nullable', 'array'],
             'event_ids.*' => ['integer', 'exists:events,id'],
         ];

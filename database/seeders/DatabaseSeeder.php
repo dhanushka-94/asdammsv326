@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\ActivityLog;
+use App\Models\CheckInItem;
 use App\Models\Designation;
 use App\Models\Event;
 use App\Models\Institute;
@@ -23,11 +24,12 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        $this->ensureSystemUsers();
         $this->wipeSampleData();
+        $this->ensureSystemUsers();
         $this->seedSettings();
         $this->seedDesignations();
         $this->seedMemberCategories();
+        $this->seedCheckInItems();
 
         $this->call([
             OrgStructureSeeder::class,
@@ -38,93 +40,117 @@ class DatabaseSeeder extends Seeder
 
     private function ensureSystemUsers(): void
     {
-        User::query()->updateOrCreate(
-            ['email' => 'admin@asdamms.com'],
+        $users = [
             [
+                'email' => 'admin@asdamms.com',
                 'name' => 'Super Admin',
                 'phone' => '0770000001',
                 'role' => UserRole::SUPER_ADMIN,
-                'status' => 'active',
-                'password' => 'password',
-                'email_verified_at' => now(),
-                'must_change_password' => false,
-            ]
-        );
-
-        User::query()->updateOrCreate(
-            ['email' => 'manager@asdamms.com'],
+            ],
             [
+                'email' => 'manager@asdamms.com',
                 'name' => 'System Admin',
                 'phone' => '0770000002',
                 'role' => UserRole::ADMIN,
-                'status' => 'active',
-                'password' => 'password',
-                'email_verified_at' => now(),
-                'must_change_password' => false,
-            ]
-        );
-
-        User::query()->updateOrCreate(
-            ['email' => 'viewer@asdamms.com'],
+            ],
             [
+                'email' => 'viewer@asdamms.com',
                 'name' => 'System Viewer',
                 'phone' => '0770000003',
                 'role' => UserRole::VIEWER,
-                'status' => 'active',
-                'password' => 'password',
-                'email_verified_at' => now(),
-                'must_change_password' => false,
-            ]
-        );
+            ],
+            [
+                'email' => 'reception@asdamms.com',
+                'name' => 'Reception Officer',
+                'phone' => '0770000004',
+                'role' => UserRole::RECEPTION,
+            ],
+            [
+                'email' => 'reception2@asdamms.com',
+                'name' => 'Reception Desk 2',
+                'phone' => '0770000005',
+                'role' => UserRole::RECEPTION,
+            ],
+        ];
+
+        foreach ($users as $user) {
+            User::query()->updateOrCreate(
+                ['email' => $user['email']],
+                [
+                    'name' => $user['name'],
+                    'phone' => $user['phone'],
+                    'role' => $user['role'],
+                    'status' => 'active',
+                    'password' => 'password',
+                    'email_verified_at' => now(),
+                    'must_change_password' => false,
+                    'profile_image' => null,
+                    'desk_pin_hash' => null,
+                ]
+            );
+        }
     }
 
     private function wipeSampleData(): void
     {
         Schema::disableForeignKeyConstraints();
 
-        ActivityLog::query()->delete();
-        Event::query()->delete();
-        Member::query()->delete();
-        Section::query()->delete();
-        SubInstitute::query()->delete();
-        Institute::query()->delete();
-        Designation::query()->delete();
-        MemberCategory::query()->delete();
+        $tables = [
+            'event_attendance_check_in_item',
+            'event_attendances',
+            'event_enrollment_answers',
+            'event_enrollments',
+            'event_day_question_options',
+            'event_day_questions',
+            'event_day_sessions',
+            'event_days',
+            'event_venues',
+            'event_reception_user',
+            'events',
+            'check_in_items',
+            'activity_logs',
+            'members',
+            'sections',
+            'sub_institutes',
+            'institutes',
+            'designations',
+            'member_categories',
+        ];
+
+        foreach ($tables as $table) {
+            if (Schema::hasTable($table)) {
+                DB::table($table)->delete();
+            }
+        }
+
+        // Keep only the known demo system accounts when re-seeding without migrate:fresh.
+        if (Schema::hasTable('users')) {
+            User::query()
+                ->whereNotIn('email', [
+                    'admin@asdamms.com',
+                    'manager@asdamms.com',
+                    'viewer@asdamms.com',
+                    'reception@asdamms.com',
+                    'reception2@asdamms.com',
+                ])
+                ->delete();
+        }
 
         Schema::enableForeignKeyConstraints();
 
-        if (Storage::disk('public')->exists(MemberQrCode::DIRECTORY)) {
-            Storage::disk('public')->deleteDirectory(MemberQrCode::DIRECTORY);
+        foreach ([MemberQrCode::DIRECTORY, 'members/profiles', 'users/profiles'] as $directory) {
+            if (Storage::disk('public')->exists($directory)) {
+                Storage::disk('public')->deleteDirectory($directory);
+            }
         }
 
-        if (Storage::disk('public')->exists('members/profiles')) {
-            Storage::disk('public')->deleteDirectory('members/profiles');
-        }
-
-        // Reset auto-increments where helpful for clean sample IDs.
-        foreach ([
-            'members',
-            'events',
-            'event_venues',
-            'event_days',
-            'event_day_sessions',
-            'event_day_questions',
-            'event_day_question_options',
-            'event_enrollments',
-            'event_enrollment_answers',
-            'institutes',
-            'sub_institutes',
-            'sections',
-            'designations',
-            'member_categories',
-            'activity_logs',
-        ] as $table) {
+        foreach ($tables as $table) {
             if (Schema::hasTable($table)) {
                 DB::statement('ALTER TABLE `'.$table.'` AUTO_INCREMENT = 1');
             }
         }
 
-        $this->command?->info('Cleared sample data (system users kept).');
+        $this->command?->info('Cleared existing sample / business data.');
     }
 
     private function seedSettings(): void
@@ -151,6 +177,10 @@ class DatabaseSeeder extends Seeder
             'Extension Officer',
             'Programme Officer',
             'Administrative Officer',
+            'Field Assistant',
+            'Research Assistant',
+            'Lecturer',
+            'Student Officer',
         ];
 
         foreach ($designations as $name) {
@@ -174,11 +204,35 @@ class DatabaseSeeder extends Seeder
             'VIP',
             'VVIP',
             'Student',
+            'Guest',
+            'Exhibitor',
         ];
 
         foreach ($categories as $name) {
             MemberCategory::query()->create([
                 'name' => $name,
+                'is_active' => true,
+            ]);
+        }
+    }
+
+    private function seedCheckInItems(): void
+    {
+        $items = [
+            'Meal Token',
+            'Conference Bag',
+            'ID Lanyard',
+            'Water Bottle',
+            'Programme Booklet',
+            'USB Drive',
+            'Cap',
+            'Notebook',
+        ];
+
+        foreach ($items as $index => $name) {
+            CheckInItem::query()->create([
+                'name' => $name,
+                'sort_order' => $index + 1,
                 'is_active' => true,
             ]);
         }

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\ActivityLog;
 use App\Models\User;
 use App\Support\ActivityLogger;
+use App\Support\UserProfileImage;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -79,8 +80,19 @@ class ProfileController extends Controller
                 Rule::unique('users', 'email')->ignore($user->id),
             ],
             'phone' => ['nullable', 'string', 'max:30'],
+            'profile_image' => ['nullable', 'image', 'max:2048'],
             'password' => ['nullable', 'confirmed', Password::defaults()],
         ]);
+
+        if ($request->hasFile('profile_image')) {
+            $data['profile_image'] = UserProfileImage::store(
+                $request->file('profile_image'),
+                $user->id,
+                $user->profile_image,
+            );
+        } else {
+            unset($data['profile_image']);
+        }
 
         if (empty($data['password'])) {
             unset($data['password']);

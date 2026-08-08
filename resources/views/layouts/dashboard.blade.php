@@ -145,8 +145,12 @@
             <a href="{{ route('admin.profile.show') }}"
                class="mb-3 flex items-center gap-3 rounded-xl px-3 py-3 transition {{ request()->routeIs('admin.profile.*') ? 'bg-white/15 ring-1 ring-white/20' : 'bg-white/5 hover:bg-white/10' }}"
                title="View my profile">
-                <div class="flex h-9 w-9 items-center justify-center rounded-full bg-brand-green text-sm font-bold">
-                    {{ strtoupper(substr(auth()->user()->name, 0, 1)) }}
+                <div class="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-brand-green text-sm font-bold">
+                    @if (auth()->user()->profileImageUrl())
+                        <img src="{{ auth()->user()->profileImageUrl() }}" alt="" class="h-full w-full object-cover">
+                    @else
+                        {{ strtoupper(substr(auth()->user()->name, 0, 1)) }}
+                    @endif
                 </div>
                 <div class="min-w-0 flex-1">
                     <p class="truncate text-sm font-semibold">{{ auth()->user()->name }}</p>

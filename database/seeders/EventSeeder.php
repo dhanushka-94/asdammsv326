@@ -2,7 +2,9 @@
 
 namespace Database\Seeders;
 
+use App\Models\CheckInItem;
 use App\Models\Event;
+use App\Models\EventAttendance;
 use App\Models\EventEnrollment;
 use App\Models\EventEnrollmentAnswer;
 use App\Models\Member;
@@ -15,6 +17,10 @@ class EventSeeder extends Seeder
     public function run(): void
     {
         $adminId = User::query()->where('email', 'admin@asdamms.com')->value('id');
+        $receptionIds = User::query()
+            ->whereIn('email', ['reception@asdamms.com', 'reception2@asdamms.com'])
+            ->pluck('id')
+            ->all();
 
         $main = Event::query()->create([
             'name' => 'ASDA Annual Symposium 2026',
@@ -189,26 +195,31 @@ class EventSeeder extends Seeder
             ['sort_order' => 4, 'label' => 'General overview'],
         ]);
 
-        $main->load('days.questions.options');
-        $workshop->load('days.questions.options');
+        if ($receptionIds !== []) {
+            $main->receptionUsers()->sync($receptionIds);
+            $workshop->receptionUsers()->sync([$receptionIds[0]]);
+        }
+
+        $main->load(['days.questions.options', 'venues']);
+        $workshop->load(['days.questions.options', 'venues']);
         $webinar->load('days.questions.options');
 
         $memberIds = Member::query()
             ->where('registration_status', 'approved')
             ->where('status', 'active')
             ->orderBy('id')
-            ->limit(320)
+            ->limit(800)
             ->pluck('id');
 
         DB::transaction(function () use ($main, $workshop, $webinar, $memberIds, $adminId): void {
             foreach ($memberIds as $index => $memberId) {
                 $mode = $index % 3 === 0 ? 'online' : 'physical';
-                $isKickedSample = $index >= 310 && $index < 320;
+                $isKickedSample = $index >= 790 && $index < 800;
 
                 $enrollment = EventEnrollment::query()->create([
                     'event_id' => $main->id,
                     'member_id' => $memberId,
-                    'enrolled_at' => now()->subDays(($index % 21) + 1),
+                    'enrolled_at' => now()->subDays(($index % 40) + 1),
                     'participation_mode' => $mode,
                     'kicked_at' => $isKickedSample ? now()->subDays(2) : null,
                     'kick_reason' => $isKickedSample ? 'Sample removal for testing.' : null,
@@ -219,21 +230,21 @@ class EventSeeder extends Seeder
                     $this->seedAnswers($enrollment, $main, $index);
                 }
 
-                if ($index < 90) {
+                if ($index < 180) {
                     $workshopEnrollment = EventEnrollment::query()->create([
                         'event_id' => $workshop->id,
                         'member_id' => $memberId,
-                        'enrolled_at' => now()->subDays(($index % 12) + 1),
+                        'enrolled_at' => now()->subDays(($index % 14) + 1),
                         'participation_mode' => 'physical',
                     ]);
                     $this->seedAnswers($workshopEnrollment, $workshop, $index);
                 }
 
-                if ($index < 140) {
+                if ($index < 260) {
                     $webinarEnrollment = EventEnrollment::query()->create([
                         'event_id' => $webinar->id,
                         'member_id' => $memberId,
-                        'enrolled_at' => now()->subDays(($index % 10) + 1),
+                        'enrolled_at' => now()->subDays(($index % 12) + 1),
                         'participation_mode' => 'online',
                     ]);
                     $this->seedAnswers($webinarEnrollment, $webinar, $index);
@@ -241,7 +252,66 @@ class EventSeeder extends Seeder
             }
         });
 
-        $this->command?->info('Seeded 3 events with venues, days, sessions, questionnaires, and enrollments.');
+        $this->seedCheckIns($main, $receptionIds, $adminId, 450);
+        $this->seedCheckIns($workshop, $receptionIds, $adminId, 120);
+
+        $this->command?->info('Seeded 3 events with venues, days, sessions, questionnaires, enrollments, and check-ins.');
+    }
+
+    /**
+     * @param  list<int>  $receptionIds
+     */
+    private function seedCheckIns(
+        Event $event,
+        array $receptionIds,
+        ?int $adminId,
+        int $limit = 450,
+    ): void {
+        $event->loadMissing(['days', 'venues']);
+        $days = $event->days;
+        $venues = $event->venues;
+        $itemIds = CheckInItem::query()->ordered()->pluck('id')->all();
+
+        $enrollments = EventEnrollment::query()
+            ->active()
+            ->where('event_id', $event->id)
+            ->orderBy('id')
+            ->limit($limit)
+            ->get(['id', 'member_id']);
+
+        if ($days->isEmpty() || $enrollments->isEmpty()) {
+            return;
+        }
+
+        $officerPool = $receptionIds !== [] ? $receptionIds : array_values(array_filter([$adminId]));
+
+        if ($officerPool === []) {
+            return;
+        }
+
+        foreach ($enrollments as $index => $enrollment) {
+            $day = $days[$index % $days->count()];
+            $venue = $venues->isNotEmpty() ? $venues[$index % $venues->count()] : null;
+            $officerId = $officerPool[$index % count($officerPool)];
+
+            $attendance = EventAttendance::query()->create([
+                'event_id' => $event->id,
+                'event_day_id' => $day->id,
+                'event_venue_id' => $venue?->id,
+                'member_id' => $enrollment->member_id,
+                'event_enrollment_id' => $enrollment->id,
+                'checked_in_at' => now()->subDays(($index % 5))->subMinutes(($index % 180) + 5),
+                'checked_in_by' => $officerId,
+            ]);
+
+            if ($itemIds !== []) {
+                $give = collect($itemIds)
+                    ->take(($index % min(4, count($itemIds))) + 1)
+                    ->mapWithKeys(fn ($id) => [$id => ['given_at' => now()->subMinutes(($index % 60) + 1)]])
+                    ->all();
+                $attendance->checkInItems()->sync($give);
+            }
+        }
     }
 
     private function seedAnswers(EventEnrollment $enrollment, Event $event, int $index): void

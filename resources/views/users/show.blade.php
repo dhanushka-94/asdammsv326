@@ -14,9 +14,13 @@
     <div class="card overflow-hidden">
         <div class="bg-gradient-to-r from-brand-blue via-brand-green to-brand-orange px-5 py-8 sm:px-8">
             <div class="flex flex-col gap-4 sm:flex-row sm:items-center">
-                <div class="flex h-16 w-16 items-center justify-center rounded-2xl bg-white/15 text-2xl font-bold text-white backdrop-blur">
-                    {{ strtoupper(substr($user->name, 0, 1)) }}
-                </div>
+                @if ($user->profileImageUrl())
+                    <img src="{{ $user->profileImageUrl() }}" alt="" class="h-16 w-16 rounded-2xl border-2 border-white/40 object-cover">
+                @else
+                    <div class="flex h-16 w-16 items-center justify-center rounded-2xl bg-white/15 text-2xl font-bold text-white backdrop-blur">
+                        {{ strtoupper(substr($user->name, 0, 1)) }}
+                    </div>
+                @endif
                 <div class="text-white">
                     <h2 class="font-display text-2xl font-bold">{{ $user->name }}</h2>
                     <p class="text-white/80">{{ $user->email }}</p>

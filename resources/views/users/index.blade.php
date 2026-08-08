@@ -54,8 +54,12 @@
                     <tr>
                         <td>
                             <div class="flex items-center gap-3">
-                                <div class="flex h-10 w-10 items-center justify-center rounded-full bg-brand-green-soft text-sm font-bold text-brand-green">
-                                    {{ strtoupper(substr($user->name, 0, 1)) }}
+                                <div class="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-brand-green-soft text-sm font-bold text-brand-green">
+                                    @if ($user->profileImageUrl())
+                                        <img src="{{ $user->profileImageUrl() }}" alt="" class="h-full w-full object-cover">
+                                    @else
+                                        {{ strtoupper(substr($user->name, 0, 1)) }}
+                                    @endif
                                 </div>
                                 <div>
                                     <p class="font-semibold text-ink">{{ $user->name }}</p>

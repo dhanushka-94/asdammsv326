@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Storage;
 
 class User extends Authenticatable
 {
@@ -22,6 +23,7 @@ class User extends Authenticatable
         'name',
         'email',
         'phone',
+        'profile_image',
         'role',
         'status',
         'password',
@@ -76,6 +78,13 @@ class User extends Authenticatable
         }
 
         return password_verify($pin, $this->desk_pin_hash);
+    }
+
+    public function profileImageUrl(): ?string
+    {
+        return $this->profile_image
+            ? Storage::disk('public')->url($this->profile_image)
+            : null;
     }
 
     public function receptionEvents(): BelongsToMany
