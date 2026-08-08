@@ -91,7 +91,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::post('/reset-password', [ResetPasswordController::class, 'store'])->name('password.update');
     });
 
-    Route::middleware(['auth:web', 'role:'.UserRole::SUPER_ADMIN.','.UserRole::ADMIN.','.UserRole::VIEWER.','.UserRole::RECEPTION, 'activity'])->group(function () {
+    Route::middleware(['auth:web', 'role:'.UserRole::SUPER_ADMIN.','.UserRole::ADMIN.','.UserRole::VIEWER.','.UserRole::RECEPTION, 'activity', 'desk.unlocked'])->group(function () {
         Route::post('/logout', [AdminLoginController::class, 'destroy'])->name('logout');
 
         Route::get('/set-password', [AdminSetPasswordController::class, 'edit'])->name('set-password.edit');
@@ -101,9 +101,15 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::get('/profile', [AdminProfileController::class, 'show'])->name('profile.show');
             Route::get('/profile/edit', [AdminProfileController::class, 'edit'])->name('profile.edit');
             Route::put('/profile', [AdminProfileController::class, 'update'])->name('profile.update');
+            Route::put('/profile/desk-pin', [AdminProfileController::class, 'updateDeskPin'])->name('profile.desk-pin');
 
             Route::middleware('role:'.UserRole::SUPER_ADMIN.','.UserRole::ADMIN.','.UserRole::RECEPTION)->group(function () {
                 Route::get('attendance', [AttendanceController::class, 'index'])->name('attendance.index');
+                Route::get('attendance/lock', [AttendanceController::class, 'lockScreen'])->name('attendance.lock');
+                Route::post('attendance/lock', [AttendanceController::class, 'lock'])->name('attendance.lock.store');
+                Route::post('attendance/unlock', [AttendanceController::class, 'unlock'])->name('attendance.unlock');
+                Route::get('attendance/events/{event}/setup', [AttendanceController::class, 'setup'])->name('attendance.setup');
+                Route::post('attendance/events/{event}/start', [AttendanceController::class, 'start'])->name('attendance.start');
                 Route::get('attendance/events/{event}', [AttendanceController::class, 'desk'])->name('attendance.desk');
                 Route::post('attendance/events/{event}/lookup', [AttendanceController::class, 'lookup'])->name('attendance.lookup');
                 Route::post('attendance/events/{event}/check-in', [AttendanceController::class, 'checkIn'])->name('attendance.check-in');

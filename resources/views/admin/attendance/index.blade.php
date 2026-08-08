@@ -2,7 +2,19 @@
 
 @section('title', 'Event Attendance')
 @section('page-title', 'Event Attendance')
-@section('page-subtitle', 'Reception desk — select an event to check in members')
+@section('page-subtitle', 'Reception desk — choose an event, set day & venue, then start attending')
+
+@section('page-actions')
+@if (auth()->user()->hasDeskPin())
+<form method="POST" action="{{ route('admin.attendance.lock.store') }}" class="inline">
+    @csrf
+    <input type="hidden" name="return" value="{{ url()->current() }}">
+    <button type="submit" class="btn-secondary shrink-0 whitespace-nowrap">Lock desk</button>
+</form>
+@else
+<a href="{{ route('admin.profile.edit') }}" class="btn-outline shrink-0 whitespace-nowrap">Set desk PIN</a>
+@endif
+@endsection
 
 @section('content')
 <div class="mx-auto max-w-5xl space-y-5">
@@ -37,8 +49,8 @@
                                 Add event days before using the desk.
                             </p>
                         @else
-                            <a href="{{ route('admin.attendance.desk', $event) }}" class="btn-primary w-full justify-center">
-                                Open attendance desk
+                            <a href="{{ route('admin.attendance.setup', $event) }}" class="btn-primary w-full justify-center">
+                                Set day &amp; venue
                             </a>
                         @endif
                     </div>

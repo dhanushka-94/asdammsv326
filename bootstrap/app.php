@@ -29,6 +29,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'user.password' => \App\Http\Middleware\EnsureSystemUserPasswordChanged::class,
             'role' => \App\Http\Middleware\EnsureUserHasRole::class,
             'activity' => \App\Http\Middleware\RecordActivity::class,
+            'desk.unlocked' => \App\Http\Middleware\EnsureAttendanceDeskIsUnlocked::class,
         ]);
 
         $middleware->appendToGroup('web', [

@@ -25,6 +25,7 @@ class User extends Authenticatable
         'role',
         'status',
         'password',
+        'desk_pin_hash',
         'must_change_password',
     ];
 
@@ -33,6 +34,7 @@ class User extends Authenticatable
      */
     protected $hidden = [
         'password',
+        'desk_pin_hash',
         'remember_token',
     ];
 
@@ -46,6 +48,34 @@ class User extends Authenticatable
             'password' => 'hashed',
             'must_change_password' => 'boolean',
         ];
+    }
+
+    public function hasDeskPin(): bool
+    {
+        return filled($this->desk_pin_hash);
+    }
+
+    public function setDeskPin(string $pin): void
+    {
+        $this->forceFill([
+            'desk_pin_hash' => password_hash($pin, PASSWORD_BCRYPT),
+        ])->save();
+    }
+
+    public function clearDeskPin(): void
+    {
+        $this->forceFill([
+            'desk_pin_hash' => null,
+        ])->save();
+    }
+
+    public function verifyDeskPin(string $pin): bool
+    {
+        if (! $this->hasDeskPin()) {
+            return false;
+        }
+
+        return password_verify($pin, $this->desk_pin_hash);
     }
 
     public function receptionEvents(): BelongsToMany

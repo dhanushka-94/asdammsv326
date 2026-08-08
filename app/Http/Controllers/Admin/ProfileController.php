@@ -54,4 +54,55 @@ class ProfileController extends Controller
             ->route('admin.profile.show')
             ->with('success', 'Your profile was updated successfully.');
     }
+
+    public function updateDeskPin(Request $request): RedirectResponse
+    {
+        $user = Auth::guard('web')->user();
+
+        if (! $user->canAccessAttendance()) {
+            abort(403, 'Desk PIN is only for attendance desk users.');
+        }
+
+        $action = $request->input('action', 'save');
+
+        if ($action === 'clear') {
+            if ($user->hasDeskPin()) {
+                $request->validate([
+                    'current_desk_pin' => ['required', 'digits:4'],
+                ]);
+
+                if (! $user->verifyDeskPin($request->input('current_desk_pin'))) {
+                    return back()->withErrors(['current_desk_pin' => 'Current desk PIN is incorrect.'])->withInput();
+                }
+            }
+
+            $user->clearDeskPin();
+            session()->forget(['attendance_desk_locked', 'attendance_desk_lock_return']);
+
+            return redirect()
+                ->route('admin.profile.edit')
+                ->with('success', 'Attendance desk PIN was removed.');
+        }
+
+        $rules = [
+            'desk_pin' => ['required', 'digits:4'],
+            'desk_pin_confirmation' => ['required', 'same:desk_pin'],
+        ];
+
+        if ($user->hasDeskPin()) {
+            $rules['current_desk_pin'] = ['required', 'digits:4'];
+        }
+
+        $data = $request->validate($rules);
+
+        if ($user->hasDeskPin() && ! $user->verifyDeskPin($data['current_desk_pin'])) {
+            return back()->withErrors(['current_desk_pin' => 'Current desk PIN is incorrect.'])->withInput();
+        }
+
+        $user->setDeskPin($data['desk_pin']);
+
+        return redirect()
+            ->route('admin.profile.edit')
+            ->with('success', 'Attendance desk PIN saved. Use it to lock and unlock the desk quickly.');
+    }
 }

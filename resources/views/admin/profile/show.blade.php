@@ -54,6 +54,21 @@
                 <p class="text-xs font-semibold uppercase tracking-wide text-muted">Member since</p>
                 <p class="mt-1 font-semibold text-ink">{{ \App\Support\SriLankaDate::datetime($user->created_at) }}</p>
             </div>
+            @if ($user->canAccessAttendance())
+                <div class="rounded-xl bg-surface p-4 sm:col-span-2">
+                    <p class="text-xs font-semibold uppercase tracking-wide text-muted">Attendance desk PIN</p>
+                    <p class="mt-1 font-semibold text-ink">
+                        @if ($user->hasDeskPin())
+                            Set — use Lock desk on the attendance screen for a quick lock
+                        @else
+                            Not set
+                        @endif
+                    </p>
+                    <a href="{{ route('admin.profile.edit') }}" class="mt-2 inline-flex text-sm font-semibold text-brand-blue underline">
+                        {{ $user->hasDeskPin() ? 'Change desk PIN' : 'Set desk PIN' }}
+                    </a>
+                </div>
+            @endif
         </div>
     </div>
 </div>

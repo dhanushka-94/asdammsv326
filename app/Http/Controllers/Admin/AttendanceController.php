@@ -41,6 +41,177 @@ class AttendanceController extends Controller
         return view('admin.attendance.index', compact('events'));
     }
 
+    public function lockScreen(Request $request): View|RedirectResponse
+    {
+        $user = Auth::guard('web')->user();
+
+        if (! $user->canAccessAttendance()) {
+            abort(403);
+        }
+
+        if (! session('attendance_desk_locked')) {
+            return redirect()->route('admin.attendance.index');
+        }
+
+        return view('admin.attendance.lock', [
+            'user' => $user,
+        ]);
+    }
+
+    public function lock(Request $request): RedirectResponse|JsonResponse
+    {
+        $user = Auth::guard('web')->user();
+
+        if (! $user->canAccessAttendance()) {
+            abort(403);
+        }
+
+        if (! $user->hasDeskPin()) {
+            $message = 'Set a 4-digit desk PIN in your profile before locking.';
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'ok' => false,
+                    'status' => 'pin_required',
+                    'message' => $message,
+                    'profile_url' => route('admin.profile.edit'),
+                ], 422);
+            }
+
+            return redirect()
+                ->route('admin.profile.edit')
+                ->with('error', $message);
+        }
+
+        $returnTo = $request->input('return');
+        if (! is_string($returnTo) || $returnTo === '' || ! str_starts_with($returnTo, url('/admin'))) {
+            $returnTo = url()->previous() && str_starts_with((string) url()->previous(), url('/admin'))
+                ? url()->previous()
+                : route('admin.attendance.index');
+        }
+
+        session([
+            'attendance_desk_locked' => true,
+            'attendance_desk_lock_return' => $returnTo,
+        ]);
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'ok' => true,
+                'status' => 'locked',
+                'redirect' => route('admin.attendance.lock'),
+            ]);
+        }
+
+        return redirect()->route('admin.attendance.lock');
+    }
+
+    public function unlock(Request $request): RedirectResponse|JsonResponse
+    {
+        $user = Auth::guard('web')->user();
+
+        if (! $user->canAccessAttendance()) {
+            abort(403);
+        }
+
+        $data = $request->validate([
+            'pin' => ['required', 'digits:4'],
+        ]);
+
+        if (! $user->verifyDeskPin($data['pin'])) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'ok' => false,
+                    'status' => 'invalid_pin',
+                    'message' => 'Incorrect PIN. Try again.',
+                ], 422);
+            }
+
+            return back()->withErrors(['pin' => 'Incorrect PIN. Try again.']);
+        }
+
+        $returnTo = session('attendance_desk_lock_return', route('admin.attendance.index'));
+        session()->forget(['attendance_desk_locked', 'attendance_desk_lock_return']);
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'ok' => true,
+                'status' => 'unlocked',
+                'redirect' => $returnTo,
+            ]);
+        }
+
+        return redirect()->to($returnTo);
+    }
+
+    public function setup(Request $request, Event $event): View|RedirectResponse
+    {
+        $user = Auth::guard('web')->user();
+        $this->ensureCanAccessEvent($user, $event);
+
+        $event->load([
+            'days' => fn ($q) => $q->orderBy('sort_order')->orderBy('day_number'),
+            'venues' => fn ($q) => $q->orderBy('sort_order'),
+        ]);
+
+        if ($event->days->isEmpty()) {
+            return redirect()
+                ->route('admin.attendance.index')
+                ->with('error', 'Add at least one event day before using the attendance desk for “'.$event->name.'”.');
+        }
+
+        $defaults = $this->deskDefaults($event);
+        $selectedDayId = (int) ($request->input('day') ?: $defaults['day_id'] ?: $event->days->first()->id);
+        $selectedVenueId = $request->filled('venue')
+            ? (int) $request->input('venue')
+            : ($defaults['venue_id'] ?: $event->venues->first()?->id);
+
+        return view('admin.attendance.setup', [
+            'event' => $event,
+            'selectedDayId' => $selectedDayId,
+            'selectedVenueId' => $selectedVenueId,
+        ]);
+    }
+
+    public function start(Request $request, Event $event): RedirectResponse
+    {
+        $user = Auth::guard('web')->user();
+        $this->ensureCanAccessEvent($user, $event);
+
+        $event->load([
+            'days' => fn ($q) => $q->orderBy('sort_order')->orderBy('day_number'),
+            'venues' => fn ($q) => $q->orderBy('sort_order'),
+        ]);
+
+        if ($event->days->isEmpty()) {
+            return redirect()
+                ->route('admin.attendance.index')
+                ->with('error', 'Add at least one event day before using the attendance desk for “'.$event->name.'”.');
+        }
+
+        $requiresVenue = $event->venues->isNotEmpty();
+
+        $data = $request->validate([
+            'day' => ['required', 'integer'],
+            'venue' => [
+                Rule::requiredIf($requiresVenue),
+                'nullable',
+                'integer',
+            ],
+        ]);
+
+        $day = $this->resolveDay($event, (int) $data['day']);
+        $venue = null;
+
+        if ($requiresVenue) {
+            $venue = $this->resolveVenue($event, (int) $data['venue']);
+        }
+
+        $this->storeDeskDefaults($event, $day->id, $venue?->id);
+
+        return redirect()->route('admin.attendance.desk', $event);
+    }
+
     public function desk(Request $request, Event $event): View|RedirectResponse
     {
         $user = Auth::guard('web')->user();
@@ -57,16 +228,24 @@ class AttendanceController extends Controller
                 ->with('error', 'Add at least one event day before using the attendance desk for “'.$event->name.'”.');
         }
 
-        $selectedDayId = (int) $request->input('day', $event->days->first()->id);
-        $day = $event->days->firstWhere('id', $selectedDayId) ?? $event->days->first();
+        $defaults = $this->deskDefaults($event);
+        $requiresVenue = $event->venues->isNotEmpty();
 
-        $selectedVenueId = $request->filled('venue')
-            ? (int) $request->input('venue')
-            : ($event->venues->first()?->id);
+        if (! $defaults['day_id'] || ($requiresVenue && ! $defaults['venue_id'])) {
+            return redirect()->route('admin.attendance.setup', $event);
+        }
 
-        $venue = $selectedVenueId
-            ? $event->venues->firstWhere('id', $selectedVenueId)
+        $day = $event->days->firstWhere('id', $defaults['day_id']) ?? $event->days->first();
+        $venue = $requiresVenue
+            ? ($event->venues->firstWhere('id', $defaults['venue_id']) ?? $event->venues->first())
             : null;
+
+        if (! $day || ($requiresVenue && ! $venue)) {
+            return redirect()->route('admin.attendance.setup', $event);
+        }
+
+        // Keep session aligned if a day was removed after defaults were saved.
+        $this->storeDeskDefaults($event, $day->id, $venue?->id);
 
         $checkedInQuery = EventAttendance::query()
             ->where('event_id', $event->id)
@@ -284,6 +463,34 @@ class AttendanceController extends Controller
         if (! $user->canAccessAttendance() || ! $user->canAccessEventAttendance($event)) {
             abort(403, 'You do not have attendance access for this event.');
         }
+    }
+
+    /**
+     * @return array{day_id: ?int, venue_id: ?int}
+     */
+    private function deskDefaults(Event $event): array
+    {
+        $payload = session($this->deskDefaultsKey($event), []);
+
+        return [
+            'day_id' => isset($payload['day_id']) ? (int) $payload['day_id'] : null,
+            'venue_id' => isset($payload['venue_id']) ? (int) $payload['venue_id'] : null,
+        ];
+    }
+
+    private function storeDeskDefaults(Event $event, int $dayId, ?int $venueId): void
+    {
+        session([
+            $this->deskDefaultsKey($event) => [
+                'day_id' => $dayId,
+                'venue_id' => $venueId,
+            ],
+        ]);
+    }
+
+    private function deskDefaultsKey(Event $event): string
+    {
+        return 'attendance_desk.defaults.'.$event->id;
     }
 
     private function resolveDay(Event $event, int $dayId): EventDay

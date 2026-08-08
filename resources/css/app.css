@@ -138,6 +138,37 @@
         @apply border-b border-slate-100 px-4 py-3.5 align-middle;
     }
 
+    #attendance-desk .attendance-qr-reader {
+        @apply mx-auto w-full max-w-md;
+        min-height: 14rem;
+    }
+
+    #attendance-desk .attendance-qr-reader video,
+    #attendance-desk .attendance-qr-reader canvas,
+    #attendance-desk .attendance-qr-reader img {
+        width: 100% !important;
+        max-width: 100% !important;
+        height: auto !important;
+        border-radius: 0;
+    }
+
+    #attendance-desk .attendance-qr-reader > div {
+        max-width: 100% !important;
+    }
+
+    @media (min-width: 640px) {
+        #attendance-desk .attendance-qr-reader {
+            max-width: 28rem;
+            min-height: 16rem;
+        }
+    }
+
+    @media (min-width: 1280px) {
+        #attendance-desk .attendance-qr-reader {
+            max-width: 100%;
+        }
+    }
+
     .alert-success {
         @apply mb-4 flex items-start gap-3 rounded-xl border border-brand-green/20 bg-brand-green-soft px-4 py-3 text-sm text-brand-green;
     }

@@ -862,6 +862,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const checkinBtn = desk.querySelector('[data-checkin-btn]');
     const checkinVenue = desk.querySelector('[data-checkin-venue]');
     const checkedList = desk.querySelector('[data-checked-list]');
+    const checkedCards = desk.querySelector('[data-checked-cards]');
     const checkedCount = desk.querySelector('[data-checked-count]');
     const daySelect = document.getElementById('day');
     const deskVenueSelect = desk.querySelector('[data-venue-select]');
@@ -984,10 +985,6 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const prependCheckedIn = (row) => {
-        if (!checkedList) {
-            return;
-        }
-
         const onFirstPage = String(desk.dataset.listPage || '1') === '1';
         const hasListSearch = String(desk.dataset.listSearch || '').trim() !== '';
 
@@ -999,18 +996,44 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        const emptyRow = checkedList.querySelector('[data-empty-row]');
-        emptyRow?.remove();
+        if (checkedList) {
+            checkedList.querySelector('[data-empty-row]')?.remove();
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td class="font-semibold text-ink">${row.member_name || '—'}</td>
+                <td class="text-muted">${row.unique_id || '—'}</td>
+                <td class="text-muted">${row.venue || '—'}</td>
+                <td class="text-muted whitespace-nowrap">Just now</td>
+                <td><span class="font-semibold text-ink">${row.officer || '—'}</span></td>
+            `;
+            checkedList.prepend(tr);
+        }
 
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-            <td class="font-semibold text-ink">${row.member_name || '—'}</td>
-            <td class="text-muted">${row.unique_id || '—'}</td>
-            <td class="text-muted">${row.venue || '—'}</td>
-            <td class="text-muted">Just now</td>
-            <td><span class="font-semibold text-ink">${row.officer || '—'}</span></td>
-        `;
-        checkedList.prepend(tr);
+        if (checkedCards) {
+            checkedCards.querySelector('[data-empty-cards]')?.remove();
+            const card = document.createElement('article');
+            card.className = 'rounded-xl border border-slate-200 bg-surface/40 p-3.5';
+            card.innerHTML = `
+                <div class="flex items-start justify-between gap-3">
+                    <div class="min-w-0">
+                        <p class="truncate font-semibold text-ink">${row.member_name || '—'}</p>
+                        <p class="mt-0.5 break-all text-xs font-semibold text-brand-blue">${row.unique_id || '—'}</p>
+                    </div>
+                    <p class="shrink-0 text-xs text-muted">Just now</p>
+                </div>
+                <dl class="mt-3 grid gap-2 text-sm">
+                    <div class="flex gap-2">
+                        <dt class="w-20 shrink-0 text-xs font-semibold uppercase tracking-wide text-muted">Venue</dt>
+                        <dd class="min-w-0 break-words text-ink">${row.venue || '—'}</dd>
+                    </div>
+                    <div class="flex gap-2">
+                        <dt class="w-20 shrink-0 text-xs font-semibold uppercase tracking-wide text-muted">Officer</dt>
+                        <dd class="min-w-0 font-semibold text-ink">${row.officer || '—'}</dd>
+                    </div>
+                </dl>
+            `;
+            checkedCards.prepend(card);
+        }
     };
 
     const applyLookupPayload = (payload) => {
@@ -1149,11 +1172,12 @@ document.addEventListener('DOMContentLoaded', () => {
         .then(({ Html5Qrcode }) => {
             const readerId = 'qr-reader';
             const scanner = new Html5Qrcode(readerId);
+            const boxSize = Math.max(180, Math.min(250, Math.floor(window.innerWidth * 0.55)));
 
             scanner
                 .start(
                     { facingMode: 'environment' },
-                    { fps: 8, qrbox: { width: 250, height: 250 } },
+                    { fps: 8, qrbox: { width: boxSize, height: boxSize }, aspectRatio: 1 },
                     (decodedText) => {
                         const now = Date.now();
                         const code = String(decodedText || '').trim().toUpperCase();
@@ -1188,4 +1212,127 @@ document.addEventListener('DOMContentLoaded', () => {
                 scanStatus.textContent = 'Scanner library failed to load. Use search by ID, name, or mobile.';
             }
         });
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+    const lockScreen = document.getElementById('desk-lock-screen');
+    if (lockScreen) {
+        const unlockUrl = lockScreen.dataset.unlockUrl;
+        const csrf = lockScreen.dataset.csrf;
+        const messageEl = lockScreen.querySelector('[data-pin-message]');
+        const dots = Array.from(lockScreen.querySelectorAll('[data-dot]'));
+        let pin = '';
+        let busy = false;
+
+        const renderDots = () => {
+            dots.forEach((dot, index) => {
+                dot.classList.toggle('bg-brand-green', index < pin.length);
+                dot.classList.toggle('bg-slate-600', index >= pin.length);
+            });
+        };
+
+        const setMessage = (text, isError = false) => {
+            if (!messageEl) {
+                return;
+            }
+            messageEl.textContent = text || '';
+            messageEl.classList.toggle('text-red-400', isError);
+            messageEl.classList.toggle('text-slate-300', !isError);
+        };
+
+        const submitPin = async () => {
+            if (busy || pin.length !== 4) {
+                return;
+            }
+            busy = true;
+            setMessage('Unlocking…');
+            try {
+                const response = await fetch(unlockUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Accept: 'application/json',
+                        'X-CSRF-TOKEN': csrf,
+                    },
+                    body: JSON.stringify({ pin }),
+                });
+                const payload = await response.json();
+                if (payload.ok) {
+                    setMessage('Unlocked');
+                    window.location.href = payload.redirect || '/admin/attendance';
+                    return;
+                }
+                setMessage(payload.message || 'Incorrect PIN.', true);
+                pin = '';
+                renderDots();
+            } catch (error) {
+                setMessage('Could not unlock. Try again.', true);
+                pin = '';
+                renderDots();
+            } finally {
+                busy = false;
+            }
+        };
+
+        const pushDigit = (digit) => {
+            if (busy || pin.length >= 4) {
+                return;
+            }
+            pin += digit;
+            renderDots();
+            if (pin.length === 4) {
+                submitPin();
+            }
+        };
+
+        lockScreen.querySelectorAll('[data-pin-key]').forEach((button) => {
+            button.addEventListener('click', () => {
+                const key = button.getAttribute('data-pin-key');
+                if (key === 'clear') {
+                    pin = '';
+                    setMessage('');
+                    renderDots();
+                    return;
+                }
+                if (key === 'del') {
+                    pin = pin.slice(0, -1);
+                    setMessage('');
+                    renderDots();
+                    return;
+                }
+                pushDigit(key);
+            });
+        });
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key >= '0' && event.key <= '9') {
+                event.preventDefault();
+                pushDigit(event.key);
+            } else if (event.key === 'Backspace') {
+                event.preventDefault();
+                pin = pin.slice(0, -1);
+                setMessage('');
+                renderDots();
+            } else if (event.key === 'Escape') {
+                pin = '';
+                setMessage('');
+                renderDots();
+            }
+        });
+
+        renderDots();
+        return;
+    }
+
+    document.addEventListener('keydown', (event) => {
+        if (!(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== 'l') {
+            return;
+        }
+        const lockForm = document.querySelector('form[action*="attendance/lock"]');
+        if (!lockForm) {
+            return;
+        }
+        event.preventDefault();
+        lockForm.requestSubmit();
+    });
 });
