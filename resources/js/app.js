@@ -17,7 +17,6 @@ const searchableSelectOptions = (select) => ({
     maxOptions: null,
     sortField: [{ field: '$order' }, { field: '$score' }],
     placeholder: select.querySelector('option[value=""]')?.textContent?.trim() || 'Search…',
-    plugins: ['dropdown_input'],
     render: {
         no_results: () => '<div class="no-results">No matches</div>',
     },
