@@ -244,8 +244,8 @@ class MemberCsvImporter
                     }
                 }],
                 'office_telephone' => ['nullable', 'string', function (string $attribute, mixed $value, \Closure $fail): void {
-                    if ($value !== null && $value !== '' && ! SriLankaFormat::isValidPhone((string) $value)) {
-                        $fail('Invalid office telephone.');
+                    if ($value !== null && $value !== '' && ! SriLankaFormat::isValidLandline((string) $value)) {
+                        $fail('Invalid office landline number.');
                     }
                 }],
                 'email' => ['nullable', 'email', 'max:255'],

@@ -20,12 +20,11 @@
     <div>
         <label for="nic" class="form-label">NIC number</label>
         <input id="nic" type="text" name="nic" value="{{ old('nic', $memberModel->nic ?? '') }}" required class="form-input" placeholder="123456789V or 199012345678" maxlength="12" data-format="sl-nic" inputmode="text" autocomplete="off">
-        <p class="mt-1 text-xs text-muted">Sri Lankan NIC only (old or new format). Used as username. Default password = first 4 digits + @ASDA.</p>
     </div>
 
     <div>
         <label for="designation_id" class="form-label">Designation</label>
-        <select id="designation_id" name="designation_id" required class="form-select" data-searchable-select>
+        <select id="designation_id" name="designation_id" required class="form-select" data-searchable>
             <option value="">Select designation</option>
             @foreach ($designations as $designation)
                 <option value="{{ $designation->id }}" @selected((string) old('designation_id', $memberModel->designation_id ?? '') === (string) $designation->id)>
@@ -53,7 +52,7 @@
     <div>
         <label for="mobile_1" class="form-label">Mobile number 1</label>
         <input id="mobile_1" type="text" name="mobile_1" value="{{ old('mobile_1', $memberModel->mobile_1 ?? '') }}" required class="form-input" placeholder="0771234567" maxlength="15" data-format="sl-phone" inputmode="tel" autocomplete="tel">
-        <p class="mt-1 text-xs text-muted">Format: 07XXXXXXXX or +947XXXXXXXX</p>
+        <p class="mt-1 text-xs text-muted">Mobile only: 07XXXXXXXX or +947XXXXXXXX</p>
     </div>
 
     <div>
@@ -69,7 +68,7 @@
     <div>
         <label for="office_telephone" class="form-label">Office telephone</label>
         <input id="office_telephone" type="text" name="office_telephone" value="{{ old('office_telephone', $memberModel->office_telephone ?? '') }}" class="form-input" placeholder="0112345678" maxlength="15" data-format="sl-phone" inputmode="tel">
-        <p class="mt-1 text-xs text-muted">Landline or mobile (e.g. 0112345678)</p>
+        <p class="mt-1 text-xs text-muted">Landline only with area code (e.g. 011, 081, 091)</p>
     </div>
 
     <div class="sm:col-span-2">
@@ -80,7 +79,7 @@
     <div class="sm:col-span-2 grid gap-5 sm:grid-cols-2" data-org-cascade>
         <div>
             <label for="institute" class="form-label">Institute</label>
-            <select id="institute" name="institute" class="form-select" data-org-institute data-searchable-select>
+            <select id="institute" name="institute" class="form-select" data-org-institute data-searchable>
                 <option value="">Select institute</option>
                 @foreach (($orgTree ?? []) as $orgInstitute)
                     <option value="{{ $orgInstitute['name'] }}" @selected(old('institute', $memberModel->institute ?? '') === $orgInstitute['name'])>
@@ -99,14 +98,14 @@
 
         <div>
             <label for="sub_institute" class="form-label">Sub-institute</label>
-            <select id="sub_institute" name="sub_institute" class="form-select" data-org-sub-institute data-searchable-select data-selected="{{ old('sub_institute', $memberModel->sub_institute ?? '') }}">
+            <select id="sub_institute" name="sub_institute" class="form-select" data-org-sub-institute data-searchable data-selected="{{ old('sub_institute', $memberModel->sub_institute ?? '') }}">
                 <option value="">Select sub-institute</option>
             </select>
         </div>
 
         <div class="sm:col-span-2">
             <label for="section" class="form-label">Section</label>
-            <select id="section" name="section" class="form-select" data-org-section data-searchable-select data-selected="{{ old('section', $memberModel->section ?? '') }}">
+            <select id="section" name="section" class="form-select" data-org-section data-searchable data-selected="{{ old('section', $memberModel->section ?? '') }}">
                 <option value="">Select section</option>
             </select>
         </div>

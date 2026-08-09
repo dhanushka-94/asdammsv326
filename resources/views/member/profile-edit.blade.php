@@ -35,7 +35,7 @@
                 <div>
                     <label for="mobile_1" class="form-label">Mobile number 1</label>
                     <input id="mobile_1" type="text" name="mobile_1" value="{{ old('mobile_1', $member->mobile_1) }}" required class="form-input" placeholder="0771234567" maxlength="15" data-format="sl-phone" inputmode="tel" autocomplete="tel">
-                    <p class="mt-1 text-xs text-muted">Format: 07XXXXXXXX or +947XXXXXXXX</p>
+                    <p class="mt-1 text-xs text-muted">Mobile only: 07XXXXXXXX or +947XXXXXXXX</p>
                 </div>
                 <div>
                     <label for="mobile_2" class="form-label">Mobile number 2</label>
@@ -48,7 +48,7 @@
                 <div>
                     <label for="office_telephone" class="form-label">Office telephone</label>
                     <input id="office_telephone" type="text" name="office_telephone" value="{{ old('office_telephone', $member->office_telephone) }}" class="form-input" placeholder="0112345678" maxlength="15" data-format="sl-phone" inputmode="tel">
-                    <p class="mt-1 text-xs text-muted">Landline or mobile (e.g. 0112345678)</p>
+                    <p class="mt-1 text-xs text-muted">Landline only with area code (e.g. 011, 081, 091)</p>
                 </div>
                 <div class="sm:col-span-2">
                     <label for="email" class="form-label">Email</label>
@@ -57,7 +57,7 @@
                 <div class="sm:col-span-2 grid gap-5 sm:grid-cols-2" data-org-cascade>
                     <div>
                         <label for="institute" class="form-label">Institute</label>
-                        <select id="institute" name="institute" class="form-select" data-org-institute data-searchable-select>
+                        <select id="institute" name="institute" class="form-select" data-org-institute data-searchable>
                             <option value="">Select institute</option>
                             @foreach (($orgTree ?? []) as $orgInstitute)
                                 <option value="{{ $orgInstitute['name'] }}" @selected(old('institute', $member->institute) === $orgInstitute['name'])>
@@ -75,13 +75,13 @@
                     </div>
                     <div>
                         <label for="sub_institute" class="form-label">Sub-institute</label>
-                        <select id="sub_institute" name="sub_institute" class="form-select" data-org-sub-institute data-searchable-select data-selected="{{ old('sub_institute', $member->sub_institute) }}">
+                        <select id="sub_institute" name="sub_institute" class="form-select" data-org-sub-institute data-searchable data-selected="{{ old('sub_institute', $member->sub_institute) }}">
                             <option value="">Select sub-institute</option>
                         </select>
                     </div>
                     <div class="sm:col-span-2">
                         <label for="section" class="form-label">Section</label>
-                        <select id="section" name="section" class="form-select" data-org-section data-searchable-select data-selected="{{ old('section', $member->section) }}">
+                        <select id="section" name="section" class="form-select" data-org-section data-searchable data-selected="{{ old('section', $member->section) }}">
                             <option value="">Select section</option>
                         </select>
                     </div>

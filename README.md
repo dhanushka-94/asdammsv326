@@ -23,7 +23,7 @@ Built with Laravel 12, MySQL, Vite, and Tailwind CSS. Application clocks use **S
 
 ```bash
 composer install
-cp .env.example .env
+# Create .env from your local settings (or copy .env.production and adjust)
 php artisan key:generate
 # Configure MySQL in .env, then:
 php artisan migrate
@@ -32,7 +32,7 @@ npm run build
 php artisan serve
 ```
 
-See `.env.example` for organized environment variables (locale, timezone, database, mail, etc.).
+Production settings live in `.env.production` (not committed). On the server, copy it to `.env`.
 
 ## License
 

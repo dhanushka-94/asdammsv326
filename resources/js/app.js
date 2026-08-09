@@ -8,37 +8,6 @@ import './bootstrap';
 import Chart from 'chart.js/auto';
 import Cropper from 'cropperjs';
 import 'cropperjs/dist/cropper.css';
-import TomSelect from 'tom-select';
-import 'tom-select/dist/css/tom-select.css';
-
-const searchableSelectOptions = (select) => ({
-    allowEmptyOption: true,
-    create: false,
-    maxOptions: null,
-    sortField: [{ field: '$order' }, { field: '$score' }],
-    placeholder: select.querySelector('option[value=""]')?.textContent?.trim() || 'Search…',
-    render: {
-        no_results: () => '<div class="no-results">No matches</div>',
-    },
-});
-
-const enhanceSearchableSelect = (select) => {
-    if (! select || select.tomselect) {
-        return select?.tomselect || null;
-    }
-
-    return new TomSelect(select, searchableSelectOptions(select));
-};
-
-const syncSearchableSelect = (select) => {
-    if (! select?.tomselect) {
-        return;
-    }
-
-    const value = select.value;
-    select.tomselect.sync();
-    select.tomselect.setValue(value, true);
-};
 
 const normalizeNic = (value) => {
     let nic = String(value || '')
@@ -304,6 +273,67 @@ document.addEventListener('DOMContentLoaded', () => {
 
     bindAutoCorrect('[data-format="sl-nic"]', normalizeNic);
     bindAutoCorrect('[data-format="sl-phone"]', normalizePhone);
+
+    const loginSplash = document.getElementById('member-login-splash');
+    const loginShell = document.querySelector('.login-shell');
+    if (loginSplash && loginShell) {
+        const minMs = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 200 : 2100;
+        const startedAt = Date.now();
+        let finished = false;
+
+        const finishSplash = () => {
+            if (finished) {
+                return;
+            }
+            finished = true;
+
+            const remaining = Math.max(0, minMs - (Date.now() - startedAt));
+            window.setTimeout(() => {
+                loginShell.classList.add('is-ready');
+                loginSplash.classList.add('is-done');
+                window.setTimeout(() => loginSplash.remove(), 500);
+            }, remaining);
+        };
+
+        const splashLogo = loginSplash.querySelector('[data-login-splash-logo]');
+        if (splashLogo && !splashLogo.complete) {
+            splashLogo.addEventListener('load', finishSplash, { once: true });
+            splashLogo.addEventListener('error', finishSplash, { once: true });
+        } else {
+            finishSplash();
+        }
+
+        window.setTimeout(finishSplash, 3500);
+    }
+
+    const helpModal = document.getElementById('member-help-modal');
+    if (helpModal) {
+        const openHelpModal = () => {
+            helpModal.classList.remove('hidden');
+            helpModal.classList.add('flex');
+            helpModal.setAttribute('aria-hidden', 'false');
+        };
+
+        const closeHelpModal = () => {
+            helpModal.classList.add('hidden');
+            helpModal.classList.remove('flex');
+            helpModal.setAttribute('aria-hidden', 'true');
+        };
+
+        document.querySelectorAll('[data-open-help-modal]').forEach((button) => {
+            button.addEventListener('click', openHelpModal);
+        });
+
+        helpModal.querySelectorAll('[data-close-help-modal], [data-help-modal-backdrop]').forEach((el) => {
+            el.addEventListener('click', closeHelpModal);
+        });
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape' && !helpModal.classList.contains('hidden')) {
+                closeHelpModal();
+            }
+        });
+    }
 
     const waitingCard = document.getElementById('waiting-approval-card');
     if (waitingCard) {
@@ -781,8 +811,219 @@ document.addEventListener('DOMContentLoaded', () => {
         reindexDays();
     }
 
-    document.querySelectorAll('[data-searchable-select]').forEach((select) => {
-        enhanceSearchableSelect(select);
+    const closeAllSearchable = (exceptRoot = null) => {
+        document.querySelectorAll('[data-searchable-root]').forEach((root) => {
+            if (exceptRoot && root === exceptRoot) {
+                return;
+            }
+            root.querySelector('[data-searchable-panel]')?.classList.remove('is-open');
+            root.querySelector('[data-searchable-trigger]')?.setAttribute('aria-expanded', 'false');
+        });
+    };
+
+    const syncSearchableSelect = (select) => {
+        select?._searchableApi?.refresh();
+    };
+
+    const enhanceSearchableSelect = (select) => {
+        if (select.dataset.searchableReady === '1') {
+            return;
+        }
+
+        select.dataset.searchableReady = '1';
+        select.classList.add('searchable-select-native');
+
+        const root = document.createElement('div');
+        root.className = 'searchable-select';
+        root.dataset.searchableRoot = '';
+
+        const trigger = document.createElement('button');
+        trigger.type = 'button';
+        trigger.className = 'searchable-select-trigger';
+        trigger.dataset.searchableTrigger = '';
+        trigger.setAttribute('aria-haspopup', 'listbox');
+        trigger.setAttribute('aria-expanded', 'false');
+        if (select.id) {
+            trigger.id = `${select.id}_searchable_trigger`;
+            const label = document.querySelector(`label[for="${select.id}"]`);
+            if (label) {
+                label.setAttribute('for', trigger.id);
+            }
+        }
+
+        const panel = document.createElement('div');
+        panel.className = 'searchable-select-panel';
+        panel.dataset.searchablePanel = '';
+
+        const search = document.createElement('input');
+        search.type = 'search';
+        search.className = 'form-input searchable-select-search';
+        search.placeholder = 'Search…';
+        search.autocomplete = 'off';
+        search.spellcheck = false;
+
+        const optionsList = document.createElement('div');
+        optionsList.className = 'searchable-select-options';
+        optionsList.setAttribute('role', 'listbox');
+
+        panel.appendChild(search);
+        panel.appendChild(optionsList);
+
+        select.parentNode.insertBefore(root, select);
+        root.appendChild(select);
+        root.appendChild(trigger);
+        root.appendChild(panel);
+
+        let activeIndex = -1;
+
+        const selectedOption = () =>
+            Array.from(select.options).find((option) => option.selected) || select.options[0] || null;
+
+        const updateTrigger = () => {
+            const option = selectedOption();
+            const label = option?.textContent?.trim() || '';
+            const isPlaceholder = !option || option.value === '';
+            trigger.textContent = label || 'Select…';
+            trigger.classList.toggle('is-placeholder', isPlaceholder);
+        };
+
+        const filteredOptions = () => {
+            const query = search.value.trim().toLowerCase();
+            return Array.from(select.options).filter((option) => {
+                if (!query) {
+                    return true;
+                }
+                return option.textContent.toLowerCase().includes(query);
+            });
+        };
+
+        const renderOptions = () => {
+            const options = filteredOptions();
+            optionsList.innerHTML = '';
+
+            if (options.length === 0) {
+                const empty = document.createElement('div');
+                empty.className = 'searchable-select-empty';
+                empty.textContent = 'No matches found';
+                optionsList.appendChild(empty);
+                activeIndex = -1;
+                return;
+            }
+
+            options.forEach((option, index) => {
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'searchable-select-option';
+                button.textContent = option.textContent;
+                button.dataset.value = option.value;
+                button.setAttribute('role', 'option');
+                if (option.selected) {
+                    button.classList.add('is-selected');
+                    activeIndex = index;
+                }
+                button.addEventListener('click', () => {
+                    select.value = option.value;
+                    Array.from(select.options).forEach((opt) => {
+                        opt.selected = opt.value === option.value;
+                    });
+                    select.dispatchEvent(new Event('change', { bubbles: true }));
+                    updateTrigger();
+                    closePanel();
+                });
+                optionsList.appendChild(button);
+            });
+        };
+
+        const openPanel = () => {
+            closeAllSearchable(root);
+            panel.classList.add('is-open');
+            trigger.setAttribute('aria-expanded', 'true');
+            search.value = '';
+            renderOptions();
+            requestAnimationFrame(() => search.focus());
+        };
+
+        const closePanel = () => {
+            panel.classList.remove('is-open');
+            trigger.setAttribute('aria-expanded', 'false');
+            activeIndex = -1;
+        };
+
+        const moveActive = (delta) => {
+            const buttons = Array.from(optionsList.querySelectorAll('.searchable-select-option'));
+            if (buttons.length === 0) {
+                return;
+            }
+            activeIndex = (activeIndex + delta + buttons.length) % buttons.length;
+            buttons.forEach((button, index) => {
+                button.classList.toggle('is-active', index === activeIndex);
+            });
+            buttons[activeIndex]?.scrollIntoView({ block: 'nearest' });
+        };
+
+        trigger.addEventListener('click', () => {
+            if (panel.classList.contains('is-open')) {
+                closePanel();
+            } else {
+                openPanel();
+            }
+        });
+
+        search.addEventListener('input', () => {
+            activeIndex = -1;
+            renderOptions();
+        });
+
+        search.addEventListener('keydown', (event) => {
+            if (event.key === 'ArrowDown') {
+                event.preventDefault();
+                moveActive(1);
+            } else if (event.key === 'ArrowUp') {
+                event.preventDefault();
+                moveActive(-1);
+            } else if (event.key === 'Enter') {
+                event.preventDefault();
+                const buttons = Array.from(optionsList.querySelectorAll('.searchable-select-option'));
+                const target = buttons[activeIndex] || buttons[0];
+                target?.click();
+            } else if (event.key === 'Escape') {
+                event.preventDefault();
+                closePanel();
+                trigger.focus();
+            }
+        });
+
+        select._searchableApi = {
+            refresh: () => {
+                updateTrigger();
+                if (panel.classList.contains('is-open')) {
+                    renderOptions();
+                }
+            },
+            close: closePanel,
+        };
+
+        select.addEventListener('invalid', (event) => {
+            event.preventDefault();
+            openPanel();
+            trigger.focus();
+        });
+
+        updateTrigger();
+    };
+
+    document.querySelectorAll('select[data-searchable]').forEach(enhanceSearchableSelect);
+
+    document.addEventListener('click', (event) => {
+        if (!event.target.closest('[data-searchable-root]')) {
+            closeAllSearchable();
+        }
+    });
+
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+            closeAllSearchable();
+        }
     });
 
     document.querySelectorAll('[data-org-cascade]').forEach((root) => {
@@ -801,10 +1042,6 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (e) {
             tree = [];
         }
-
-        enhanceSearchableSelect(instituteSelect);
-        enhanceSearchableSelect(subSelect);
-        enhanceSearchableSelect(sectionSelect);
 
         const fillSelect = (select, items, placeholder, selected) => {
             const current = selected ?? select.value;
@@ -835,15 +1072,6 @@ document.addEventListener('DOMContentLoaded', () => {
             syncSearchableSelect(select);
         };
 
-        const refreshSubs = (preserveSection = false) => {
-            const institute = tree.find((item) => item.name === instituteSelect.value);
-            const subs = institute ? institute.sub_institutes.map((s) => s.name) : [];
-            const selectedSub = subSelect.dataset.selected || subSelect.value;
-            fillSelect(subSelect, subs, 'Select sub-institute', selectedSub);
-            subSelect.dataset.selected = '';
-            refreshSections(preserveSection);
-        };
-
         const refreshSections = () => {
             const institute = tree.find((item) => item.name === instituteSelect.value);
             const sub = institute?.sub_institutes?.find((item) => item.name === subSelect.value);
@@ -851,6 +1079,15 @@ document.addEventListener('DOMContentLoaded', () => {
             const selectedSection = sectionSelect.dataset.selected || sectionSelect.value;
             fillSelect(sectionSelect, sections, 'Select section', selectedSection);
             sectionSelect.dataset.selected = '';
+        };
+
+        const refreshSubs = () => {
+            const institute = tree.find((item) => item.name === instituteSelect.value);
+            const subs = institute ? institute.sub_institutes.map((s) => s.name) : [];
+            const selectedSub = subSelect.dataset.selected || subSelect.value;
+            fillSelect(subSelect, subs, 'Select sub-institute', selectedSub);
+            subSelect.dataset.selected = '';
+            refreshSections();
         };
 
         instituteSelect.addEventListener('change', () => {
@@ -864,7 +1101,7 @@ document.addEventListener('DOMContentLoaded', () => {
             refreshSections();
         });
 
-        refreshSubs(true);
+        refreshSubs();
     });
 });
 

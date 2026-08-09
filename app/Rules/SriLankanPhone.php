@@ -14,8 +14,8 @@ class SriLankanPhone implements ValidationRule
             return;
         }
 
-        if (! is_string($value) || ! SriLankaFormat::isValidPhone($value)) {
-            $fail('Enter a valid Sri Lankan phone number (e.g. 0112345678 or 0771234567).');
+        if (! is_string($value) || ! SriLankaFormat::isValidLandline($value)) {
+            $fail('Enter a valid Sri Lankan landline number with area code (e.g. 0112345678 or 0812223344).');
         }
     }
 }

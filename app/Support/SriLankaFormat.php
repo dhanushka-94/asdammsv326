@@ -131,19 +131,67 @@ class SriLankaFormat
             return false;
         }
 
-        // 07X XXX XXXX
+        // Cellular: 07X XXX XXXX
         return (bool) preg_match('/^07[0-9]{8}$/', $normalized);
+    }
+
+    /**
+     * Official TRCSL geographic landline area codes (domestic, with leading 0).
+     *
+     * @return list<string>
+     */
+    public static function landlineAreaCodes(): array
+    {
+        return [
+            '011', // Colombo
+            '021', // Jaffna
+            '023', // Mannar
+            '024', // Vavuniya
+            '025', // Anuradhapura
+            '026', // Trincomalee
+            '027', // Polonnaruwa
+            '031', // Negombo
+            '032', // Chilaw
+            '033', // Gampaha
+            '034', // Kalutara
+            '035', // Kegalle
+            '036', // Avissawella
+            '037', // Kurunegala
+            '038', // Panadura
+            '041', // Matara
+            '045', // Ratnapura
+            '047', // Hambantota
+            '051', // Hatton
+            '052', // Nuwara Eliya
+            '054', // Nawalapitiya
+            '055', // Badulla
+            '057', // Bandarawela
+            '063', // Ampara
+            '065', // Batticaloa
+            '066', // Matale
+            '067', // Kalmunai
+            '081', // Kandy
+            '091', // Galle
+        ];
+    }
+
+    public static function isValidLandline(?string $phone): bool
+    {
+        $normalized = self::normalizePhone($phone);
+
+        if ($normalized === null || strlen($normalized) !== 10) {
+            return false;
+        }
+
+        $areaCode = substr($normalized, 0, 3);
+
+        // 0 + 2-digit area code + 7-digit subscriber number
+        return in_array($areaCode, self::landlineAreaCodes(), true)
+            && (bool) preg_match('/^0[1-9][0-9]{8}$/', $normalized);
     }
 
     public static function isValidPhone(?string $phone): bool
     {
-        $normalized = self::normalizePhone($phone);
-
-        if ($normalized === null) {
-            return false;
-        }
-
-        // Mobile or landline: 0 + 9 digits
-        return (bool) preg_match('/^0[1-9][0-9]{8}$/', $normalized);
+        return self::isValidMobile($phone) || self::isValidLandline($phone);
     }
 }

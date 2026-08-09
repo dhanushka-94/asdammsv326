@@ -1,6 +1,7 @@
 @extends('layouts.app')
 
 @section('title', 'Reset password')
+@section('meta_robots', 'noindex, nofollow, noarchive, nosnippet')
 
 @section('body')
 <div class="relative min-h-screen overflow-hidden bg-surface">

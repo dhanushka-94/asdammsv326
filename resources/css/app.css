@@ -247,81 +247,227 @@
         @apply bg-white text-brand-green shadow-sm ring-1 ring-slate-200/80;
     }
 
-    /* Searchable selects (Tom Select) — match .form-select without double border */
-    .ts-wrapper.form-select,
-    .ts-wrapper[data-searchable-select],
-    .ts-wrapper[data-org-institute],
-    .ts-wrapper[data-org-sub-institute],
-    .ts-wrapper[data-org-section] {
-        appearance: none;
-        background-image: none !important;
-        border: 0 !important;
-        box-shadow: none !important;
-        outline: none !important;
-        padding: 0 !important;
-        border-radius: 0 !important;
-        min-height: 0;
+    .searchable-select {
+        @apply relative;
     }
 
-    .ts-wrapper.single .ts-control {
-        @apply w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-ink shadow-sm;
-        min-height: 2.75rem;
-        outline: none !important;
-        box-shadow: 0 1px 2px rgb(15 23 42 / 0.04);
+    .searchable-select-native {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
     }
 
-    .ts-wrapper.single .ts-control input {
-        @apply text-sm text-ink;
-        outline: none !important;
-        box-shadow: none !important;
+    .searchable-select-trigger {
+        @apply w-full appearance-none rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 pr-10 text-left text-sm text-ink shadow-sm outline-none transition focus:border-brand-green focus:ring-2 focus:ring-brand-green/20;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%235b677a'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E");
+        background-position: right 0.75rem center;
+        background-repeat: no-repeat;
+        background-size: 1rem;
+        cursor: pointer;
     }
 
-    .ts-wrapper.focus .ts-control,
-    .ts-wrapper.dropdown-active .ts-control {
-        @apply border-brand-green;
-        outline: none !important;
-        box-shadow: 0 0 0 2px rgb(11 93 59 / 0.2);
+    .searchable-select-trigger.is-placeholder {
+        @apply text-slate-400;
     }
 
-    .ts-dropdown {
-        @apply rounded-xl border border-slate-200 bg-white text-sm text-ink shadow-lg;
-        z-index: 60;
-        outline: none !important;
+    .searchable-select-trigger[aria-expanded="true"] {
+        @apply border-brand-green ring-2 ring-brand-green/20;
     }
 
-    .ts-dropdown .dropdown-input-wrap {
-        @apply border-b border-slate-100 p-2;
+    .searchable-select-panel {
+        @apply absolute z-40 mt-1.5 hidden w-full overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg;
     }
 
-    .ts-dropdown .dropdown-input {
-        @apply w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none;
-        box-shadow: none !important;
+    .searchable-select-panel.is-open {
+        @apply block;
     }
 
-    .ts-dropdown .dropdown-input:focus {
-        @apply border-brand-green;
-        box-shadow: 0 0 0 2px rgb(11 93 59 / 0.2);
+    .searchable-select-search {
+        @apply border-0 border-b border-slate-100 shadow-none ring-0 focus:border-slate-100 focus:ring-0;
     }
 
-    .ts-dropdown .option {
-        @apply px-3 py-2;
+    .searchable-select-options {
+        @apply max-h-56 overflow-y-auto py-1;
     }
 
-    .ts-dropdown .option.active,
-    .ts-dropdown .option:hover {
-        @apply bg-brand-green-soft text-brand-green;
+    .searchable-select-option {
+        @apply flex w-full cursor-pointer px-3.5 py-2 text-left text-sm text-ink transition hover:bg-brand-green-soft hover:text-brand-green;
     }
 
-    .ts-dropdown .option.selected {
-        @apply bg-brand-blue-soft font-semibold text-brand-blue;
+    .searchable-select-option.is-active,
+    .searchable-select-option.is-selected {
+        @apply bg-brand-green-soft font-semibold text-brand-green;
     }
 
-    .ts-dropdown .no-results {
-        @apply px-3 py-2 text-muted;
+    .searchable-select-empty {
+        @apply px-3.5 py-3 text-sm text-muted;
     }
 
-    .ts-wrapper .ts-control > .item {
-        @apply text-sm text-ink;
+    .asda-mark {
+        @apply font-bold text-brand-green;
+    }
+
+    .login-shell {
+        @apply relative min-h-dvh overflow-hidden bg-surface;
+    }
+
+    .login-bg {
+        @apply pointer-events-none absolute inset-0 overflow-hidden;
+    }
+
+    .login-bg-orb {
+        @apply absolute rounded-full blur-3xl;
+    }
+
+    .login-bg-orb-a {
+        @apply -left-24 -top-24 h-72 w-72 bg-brand-green/15 sm:h-80 sm:w-80;
+        animation: login-float-a 16s ease-in-out infinite;
+    }
+
+    .login-bg-orb-b {
+        @apply -right-16 top-[18%] h-64 w-64 bg-brand-orange/15 sm:h-72 sm:w-72;
+        animation: login-float-b 20s ease-in-out infinite;
+    }
+
+    .login-bg-orb-c {
+        @apply bottom-[-4rem] left-[28%] h-56 w-56 bg-brand-blue/15 sm:h-64 sm:w-64;
+        animation: login-float-c 18s ease-in-out infinite;
+    }
+
+    .login-bg-grid {
+        @apply absolute inset-0 opacity-[0.035];
+        background-image:
+            linear-gradient(to right, #142033 1px, transparent 1px),
+            linear-gradient(to bottom, #142033 1px, transparent 1px);
+        background-size: 28px 28px;
+        mask-image: radial-gradient(ellipse at center, black 35%, transparent 80%);
+    }
+
+    .login-panel,
+    .login-hero {
+        opacity: 0;
+    }
+
+    .login-shell.is-ready .login-panel {
+        animation: login-rise 0.55s ease-out both;
+    }
+
+    .login-shell.is-ready .login-hero {
+        animation: login-rise 0.7s ease-out both;
+    }
+
+    .login-splash {
+        @apply fixed inset-0 z-[120] flex items-center justify-center overflow-hidden bg-surface;
+        transition: opacity 0.55s ease, visibility 0.55s ease, transform 0.55s ease;
+    }
+
+    .login-splash.is-done {
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+        transform: scale(1.02);
+    }
+
+    .login-splash-bg {
+        @apply pointer-events-none absolute inset-0 overflow-hidden;
+    }
+
+    .login-splash-inner {
+        @apply relative z-10 flex w-full max-w-md flex-col items-center px-6 text-center;
+    }
+
+    .login-splash-mark {
+        @apply relative mb-7 flex h-40 w-40 items-center justify-center sm:mb-8 sm:h-44 sm:w-44;
+    }
+
+    .login-splash-halo {
+        @apply absolute inset-[12%] rounded-full bg-brand-green/10 blur-2xl;
+        animation: login-splash-halo 2.4s ease-in-out infinite;
+    }
+
+    .login-splash-ring {
+        @apply absolute inset-0 rounded-full border border-brand-green/25;
+        animation: login-splash-ring 2s ease-in-out infinite;
+    }
+
+    .login-splash-ring-b {
+        @apply absolute inset-[-10px] rounded-full border border-dashed border-brand-green/15 sm:inset-[-12px];
+        animation: login-splash-spin 12s linear infinite;
+    }
+
+    .login-splash-logo-wrap {
+        @apply relative z-10 flex h-[7.5rem] w-[7.5rem] items-center justify-center rounded-full border border-white/80 bg-white/90 shadow-lg shadow-brand-green/10 backdrop-blur-sm sm:h-36 sm:w-36;
+        animation: login-splash-logo 1s ease-out both;
+    }
+
+    .login-splash-logo {
+        @apply h-[4.75rem] w-auto object-contain sm:h-24;
+    }
+
+    .login-splash-brand {
+        @apply relative z-10 flex items-center justify-center gap-1 font-display text-3xl font-bold tracking-[0.32em] text-brand-green sm:text-4xl;
+    }
+
+    .login-splash-letter {
+        display: inline-block;
+        animation: login-splash-letter 0.55s ease-out both;
+        animation-delay: calc(0.18s + (var(--i) * 0.08s));
+    }
+
+    .login-splash-title {
+        @apply relative z-10 mt-3 max-w-sm text-sm font-medium leading-relaxed text-ink sm:text-base;
+        animation: login-splash-text 0.7s ease-out 0.45s both;
+    }
+
+    .login-splash-sub {
+        @apply relative z-10 mt-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-muted sm:text-xs;
+        animation: login-splash-text 0.7s ease-out 0.55s both;
+    }
+
+    .login-splash-bar {
+        @apply relative z-10 mt-7 h-1 w-32 overflow-hidden rounded-full bg-brand-green/15 sm:w-40;
+        animation: login-splash-text 0.7s ease-out 0.65s both;
+    }
+
+    .login-splash-bar > span {
+        @apply block h-full w-full origin-left rounded-full bg-brand-green;
+        animation: login-splash-progress 1.45s ease-in-out infinite;
+    }
+
+    .login-splash-status {
+        @apply relative z-10 mt-3 text-xs text-muted;
+        animation: login-splash-text 0.7s ease-out 0.75s both;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .login-bg-orb-a,
+        .login-bg-orb-b,
+        .login-bg-orb-c,
+        .login-panel,
+        .login-hero,
+        .login-splash-halo,
+        .login-splash-ring,
+        .login-splash-ring-b,
+        .login-splash-logo-wrap,
+        .login-splash-letter,
+        .login-splash-title,
+        .login-splash-sub,
+        .login-splash-bar,
+        .login-splash-bar > span,
+        .login-splash-status {
+            animation: none;
+        }
+
+        .login-shell .login-panel,
+        .login-shell .login-hero {
+            opacity: 1;
+        }
     }
 }
 
@@ -350,4 +496,96 @@
         opacity: 1;
         transform: translateY(0);
     }
+}
+
+@keyframes login-float-a {
+    0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+    50% { transform: translate3d(18px, 22px, 0) scale(1.06); }
+}
+
+@keyframes login-float-b {
+    0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+    50% { transform: translate3d(-22px, 16px, 0) scale(1.08); }
+}
+
+@keyframes login-float-c {
+    0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+    50% { transform: translate3d(14px, -20px, 0) scale(1.05); }
+}
+
+@keyframes login-rise {
+    from {
+        opacity: 0;
+        transform: translateY(14px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes login-splash-logo {
+    from {
+        opacity: 0;
+        transform: scale(0.88);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+@keyframes login-splash-text {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes login-splash-letter {
+    from {
+        opacity: 0;
+        transform: translateY(10px) scale(0.92);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes login-splash-halo {
+    0%, 100% {
+        opacity: 0.45;
+        transform: scale(0.95);
+    }
+    50% {
+        opacity: 0.85;
+        transform: scale(1.08);
+    }
+}
+
+@keyframes login-splash-ring {
+    0%, 100% {
+        transform: scale(0.96);
+        opacity: 0.4;
+    }
+    50% {
+        transform: scale(1.03);
+        opacity: 0.85;
+    }
+}
+
+@keyframes login-splash-spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+@keyframes login-splash-progress {
+    0% { transform: scaleX(0.16); }
+    50% { transform: scaleX(0.82); }
+    100% { transform: scaleX(0.16); }
 }
