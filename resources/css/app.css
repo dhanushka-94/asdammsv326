@@ -247,52 +247,50 @@
         @apply bg-white text-brand-green shadow-sm ring-1 ring-slate-200/80;
     }
 
-    /* Searchable selects (Tom Select) — match .form-select, no double box */
+    /* Searchable selects (Tom Select) — match native .form-select, no extra chrome */
     .ts-wrapper {
-        @apply w-full border-0 bg-transparent p-0 shadow-none outline-none;
+        @apply w-full;
     }
 
-    .ts-wrapper.single .ts-control {
-        @apply flex w-full items-center rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-ink shadow-sm outline-none;
+    .ts-wrapper.single .ts-control,
+    .ts-wrapper.single.input-active .ts-control {
+        @apply w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 pr-10 text-sm text-ink shadow-sm;
         min-height: 2.75rem;
-        box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+        box-shadow: none !important;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%235b677a'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E");
+        background-position: right 0.75rem center;
+        background-repeat: no-repeat;
+        background-size: 1rem;
     }
 
     .ts-wrapper.single .ts-control input {
-        @apply m-0 border-0 bg-transparent p-0 text-sm text-ink shadow-none outline-none ring-0;
+        @apply m-0 border-0 bg-transparent p-0 text-sm text-ink shadow-none outline-none;
+        min-width: 4rem !important;
         box-shadow: none !important;
     }
 
     .ts-wrapper.focus .ts-control,
     .ts-wrapper.dropdown-active .ts-control,
-    .ts-wrapper.input-active .ts-control {
-        @apply border-brand-green outline-none;
-        box-shadow: 0 0 0 2px rgb(11 93 59 / 0.2);
+    .ts-wrapper.single.input-active .ts-control {
+        @apply border-brand-green;
+        box-shadow: 0 0 0 2px rgb(11 93 59 / 0.2) !important;
     }
 
-    .ts-wrapper .ts-control,
-    .ts-wrapper .ts-control:focus,
-    .ts-wrapper.focus {
-        outline: none !important;
+    .ts-wrapper .ts-control > .item {
+        @apply m-0 border-0 bg-transparent p-0 text-sm text-ink shadow-none;
     }
 
-    select.tomselected,
-    select.ts-hidden-accessible {
-        border: 0 !important;
-        box-shadow: none !important;
-        outline: none !important;
-        position: absolute !important;
-        left: -99999px !important;
-        width: 1px !important;
-        height: 1px !important;
-        opacity: 0 !important;
-        pointer-events: none !important;
+    .ts-wrapper.single.input-active .ts-control > .item {
+        @apply text-muted;
     }
 
     .ts-dropdown {
-        @apply mt-1 rounded-xl border border-slate-200 bg-white text-sm text-ink shadow-lg;
+        @apply mt-1 overflow-hidden rounded-xl border border-slate-200 bg-white text-sm text-ink shadow-lg;
         z-index: 60;
-        margin-top: 0.25rem;
+        margin-top: 0.25rem !important;
+        border-top: 1px solid rgb(226 232 240) !important;
+        border-radius: 0.75rem !important;
+        box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.08) !important;
     }
 
     .ts-dropdown .option {
@@ -302,27 +300,18 @@
     .ts-dropdown .option.active,
     .ts-dropdown .option:hover {
         @apply bg-brand-green-soft text-brand-green;
-        background-color: #e8f5ef;
-        color: #0b5d3b;
     }
 
     .ts-dropdown .option.selected {
         @apply bg-brand-blue-soft font-semibold text-brand-blue;
-        background-color: #eef3f9;
-        color: #1e3a5f;
     }
 
     .ts-dropdown .no-results {
         @apply px-3.5 py-2.5 text-muted;
     }
 
-    .ts-wrapper .ts-control > .item {
-        @apply m-0 border-0 bg-transparent p-0 text-sm text-ink shadow-none;
-    }
-
-    .ts-wrapper.single .ts-control::after {
-        border-color: #5b677a transparent transparent transparent;
-        margin-top: -2px;
+    .ts-wrapper .ts-control::after {
+        display: none !important;
     }
 }
 
