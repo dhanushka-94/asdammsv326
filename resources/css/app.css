@@ -246,6 +246,56 @@
     .member-tab-btn.is-active {
         @apply bg-white text-brand-green shadow-sm ring-1 ring-slate-200/80;
     }
+
+    /* Searchable selects (Tom Select) — match .form-select */
+    .ts-wrapper.single .ts-control {
+        @apply w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-ink shadow-sm;
+        min-height: 2.75rem;
+    }
+
+    .ts-wrapper.single .ts-control input {
+        @apply text-sm text-ink;
+    }
+
+    .ts-wrapper.focus .ts-control,
+    .ts-wrapper.dropdown-active .ts-control {
+        @apply border-brand-green ring-2 ring-brand-green/20;
+        box-shadow: none;
+    }
+
+    .ts-dropdown {
+        @apply rounded-xl border border-slate-200 bg-white text-sm text-ink shadow-lg;
+        z-index: 60;
+    }
+
+    .ts-dropdown .dropdown-input-wrap {
+        @apply border-b border-slate-100 p-2;
+    }
+
+    .ts-dropdown .dropdown-input {
+        @apply w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-brand-green focus:ring-2 focus:ring-brand-green/20;
+    }
+
+    .ts-dropdown .option {
+        @apply px-3 py-2;
+    }
+
+    .ts-dropdown .option.active,
+    .ts-dropdown .option:hover {
+        @apply bg-brand-green-soft text-brand-green;
+    }
+
+    .ts-dropdown .option.selected {
+        @apply bg-brand-blue-soft font-semibold text-brand-blue;
+    }
+
+    .ts-dropdown .no-results {
+        @apply px-3 py-2 text-muted;
+    }
+
+    .ts-wrapper .ts-control > .item {
+        @apply text-sm text-ink;
+    }
 }
 
 @keyframes enroll-pulse {

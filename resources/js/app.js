@@ -8,6 +8,38 @@ import './bootstrap';
 import Chart from 'chart.js/auto';
 import Cropper from 'cropperjs';
 import 'cropperjs/dist/cropper.css';
+import TomSelect from 'tom-select';
+import 'tom-select/dist/css/tom-select.css';
+
+const searchableSelectOptions = (select) => ({
+    allowEmptyOption: true,
+    create: false,
+    maxOptions: null,
+    sortField: [{ field: '$order' }, { field: '$score' }],
+    placeholder: select.querySelector('option[value=""]')?.textContent?.trim() || 'Search…',
+    plugins: ['dropdown_input'],
+    render: {
+        no_results: () => '<div class="no-results">No matches</div>',
+    },
+});
+
+const enhanceSearchableSelect = (select) => {
+    if (! select || select.tomselect) {
+        return select?.tomselect || null;
+    }
+
+    return new TomSelect(select, searchableSelectOptions(select));
+};
+
+const syncSearchableSelect = (select) => {
+    if (! select?.tomselect) {
+        return;
+    }
+
+    const value = select.value;
+    select.tomselect.sync();
+    select.tomselect.setValue(value, true);
+};
 
 const normalizeNic = (value) => {
     let nic = String(value || '')
@@ -750,6 +782,10 @@ document.addEventListener('DOMContentLoaded', () => {
         reindexDays();
     }
 
+    document.querySelectorAll('[data-searchable-select]').forEach((select) => {
+        enhanceSearchableSelect(select);
+    });
+
     document.querySelectorAll('[data-org-cascade]').forEach((root) => {
         const treeEl = root.querySelector('[data-org-tree]');
         const instituteSelect = root.querySelector('[data-org-institute]');
@@ -766,6 +802,10 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (e) {
             tree = [];
         }
+
+        enhanceSearchableSelect(instituteSelect);
+        enhanceSearchableSelect(subSelect);
+        enhanceSearchableSelect(sectionSelect);
 
         const fillSelect = (select, items, placeholder, selected) => {
             const current = selected ?? select.value;
@@ -792,6 +832,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 legacy.selected = true;
                 select.appendChild(legacy);
             }
+
+            syncSearchableSelect(select);
         };
 
         const refreshSubs = (preserveSection = false) => {

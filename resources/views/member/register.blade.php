@@ -38,7 +38,7 @@
         </form>
 
         <p class="mt-6 text-center text-xs font-semibold text-brand-blue">
-            Developed by 1920 &amp; TFBS - DOA
+            Developed by 1920 &amp; TFBS - Department of Agriculture
         </p>
     </div>
 </div>

@@ -96,7 +96,7 @@
                 Annual Symposium of the Department of Agriculture (ASDA) - Member Management System
             </p>
             <p class="text-xs font-semibold text-brand-blue">
-                Developed by 1920 &amp; TFBS - DOA
+                Developed by 1920 &amp; TFBS - Department of Agriculture
             </p>
         </footer>
     </div>

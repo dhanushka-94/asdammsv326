@@ -57,7 +57,7 @@
                 <div class="sm:col-span-2 grid gap-5 sm:grid-cols-2" data-org-cascade>
                     <div>
                         <label for="institute" class="form-label">Institute</label>
-                        <select id="institute" name="institute" class="form-select" data-org-institute>
+                        <select id="institute" name="institute" class="form-select" data-org-institute data-searchable-select>
                             <option value="">Select institute</option>
                             @foreach (($orgTree ?? []) as $orgInstitute)
                                 <option value="{{ $orgInstitute['name'] }}" @selected(old('institute', $member->institute) === $orgInstitute['name'])>
@@ -75,13 +75,13 @@
                     </div>
                     <div>
                         <label for="sub_institute" class="form-label">Sub-institute</label>
-                        <select id="sub_institute" name="sub_institute" class="form-select" data-org-sub-institute data-selected="{{ old('sub_institute', $member->sub_institute) }}">
+                        <select id="sub_institute" name="sub_institute" class="form-select" data-org-sub-institute data-searchable-select data-selected="{{ old('sub_institute', $member->sub_institute) }}">
                             <option value="">Select sub-institute</option>
                         </select>
                     </div>
                     <div class="sm:col-span-2">
                         <label for="section" class="form-label">Section</label>
-                        <select id="section" name="section" class="form-select" data-org-section data-selected="{{ old('section', $member->section) }}">
+                        <select id="section" name="section" class="form-select" data-org-section data-searchable-select data-selected="{{ old('section', $member->section) }}">
                             <option value="">Select section</option>
                         </select>
                     </div>
