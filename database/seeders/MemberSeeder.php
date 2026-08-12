@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\Hash;
 
 class MemberSeeder extends Seeder
 {
-    private const TOTAL = 2200;
+    private const TOTAL = 28;
 
     /** @var list<string> */
     private array $titles = ['Dr', 'Mr', 'Mrs', 'Ms', 'Prof', 'Eng'];

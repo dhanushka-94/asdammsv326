@@ -6,6 +6,7 @@
 
 @section('page-actions')
 @if (auth()->user()->canManageEvents())
+    <a href="{{ route('admin.events.invites.edit', $event) }}" class="btn-accent">Invite members</a>
     <a href="{{ route('admin.events.edit', $event) }}" class="btn-secondary">Edit</a>
 @endif
 <a href="{{ route('admin.events.index') }}" class="btn-outline hidden sm:inline-flex">Back to ASDA Events</a>
@@ -53,7 +54,7 @@
         </div>
     </section>
 
-    <section class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+    <section class="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
         <div class="rounded-2xl border border-brand-green/20 bg-brand-green-soft p-4">
             <p class="text-[11px] font-semibold uppercase tracking-wide text-brand-green">Method</p>
             <p class="mt-1 font-semibold text-ink">{{ $event->methodLabel() }}</p>
@@ -76,6 +77,17 @@
                     Online event
                 @else
                     Location{{ $event->venues->count() === 1 ? '' : 's' }} listed
+                @endif
+            </p>
+        </div>
+        <div class="rounded-2xl border border-brand-blue/20 bg-white p-4">
+            <p class="text-[11px] font-semibold uppercase tracking-wide text-brand-blue">Invited</p>
+            <p class="mt-1 font-display text-2xl font-bold text-ink">{{ $event->invited_members_count }}</p>
+            <p class="mt-1 text-xs text-muted">
+                @if (auth()->user()->canManageEvents())
+                    <a href="{{ route('admin.events.invites.edit', $event) }}" class="font-semibold text-brand-blue hover:underline">Manage invites</a>
+                @else
+                    Can see / register
                 @endif
             </p>
         </div>

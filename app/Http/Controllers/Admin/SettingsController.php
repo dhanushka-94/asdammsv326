@@ -17,6 +17,8 @@ class SettingsController extends Controller
             'maintenanceMode' => AppSettings::maintenanceMode(),
             'maintenanceMessage' => AppSettings::maintenanceMessage(),
             'memberRegistrationEnabled' => AppSettings::memberRegistrationEnabled(),
+            'developerCredits' => AppSettings::developerCredits(),
+            'footerCopyright' => AppSettings::footerCopyright(),
         ]);
     }
 
@@ -26,6 +28,8 @@ class SettingsController extends Controller
             'maintenance_mode' => ['nullable', 'boolean'],
             'maintenance_message' => ['required', 'string', 'max:1000'],
             'member_registration_enabled' => ['nullable', 'boolean'],
+            'developer_credits' => ['required', 'string', 'max:255'],
+            'footer_copyright' => ['required', 'string', 'max:255'],
         ]);
 
         $wasOn = AppSettings::maintenanceMode();
@@ -35,6 +39,8 @@ class SettingsController extends Controller
         AppSettings::setMaintenanceMode($nowOn);
         AppSettings::setMaintenanceMessage(trim($data['maintenance_message']));
         AppSettings::setMemberRegistrationEnabled($registrationOn);
+        AppSettings::setDeveloperCredits(trim($data['developer_credits']));
+        AppSettings::setFooterCopyright(trim($data['footer_copyright']));
 
         if ($nowOn && ! $wasOn) {
             MemberSessionInvalidator::flushAll();
@@ -47,6 +53,7 @@ class SettingsController extends Controller
             $nowOn
                 ? 'Maintenance mode is ON. Public site is blocked and logged-in members were signed out. Admin panel remains available.'
                 : 'Maintenance mode is OFF. Public member site is working again.',
+            'Developer credits updated.',
         ];
 
         return back()->with('success', implode(' ', $parts));

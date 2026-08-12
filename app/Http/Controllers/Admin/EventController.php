@@ -54,13 +54,15 @@ class EventController extends Controller
             return $event;
         });
 
-        return redirect()->route('admin.events.show', $event)->with('success', 'Event created successfully.');
+        return redirect()
+            ->route('admin.events.invites.edit', $event)
+            ->with('success', 'Event created successfully. Select members to invite so they can see and register for this event.');
     }
 
     public function show(Request $request, Event $event): View
     {
         $event->load(['venues', 'days.sessions', 'days.questions.options']);
-        $event->loadCount(['activeEnrollments', 'venues', 'days']);
+        $event->loadCount(['activeEnrollments', 'venues', 'days', 'invitedMembers']);
 
         $enrollmentQuery = $event->enrollments()
             ->active()

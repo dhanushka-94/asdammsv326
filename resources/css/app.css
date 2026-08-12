@@ -31,6 +31,39 @@
     body {
         @apply bg-surface font-sans text-ink antialiased;
     }
+
+    /* Thin, brand-tinted scrollbars (Firefox) */
+    * {
+        scrollbar-width: thin;
+        scrollbar-color: color-mix(in srgb, var(--color-brand-blue) 35%, transparent) transparent;
+    }
+
+    /* WebKit / Chromium / Safari */
+    *::-webkit-scrollbar {
+        width: 0.55rem;
+        height: 0.55rem;
+    }
+
+    *::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    *::-webkit-scrollbar-thumb {
+        background: color-mix(in srgb, var(--color-brand-blue) 28%, transparent);
+        border-radius: 9999px;
+        border: 2px solid transparent;
+        background-clip: padding-box;
+    }
+
+    *::-webkit-scrollbar-thumb:hover {
+        background: color-mix(in srgb, var(--color-brand-blue) 48%, transparent);
+        border: 2px solid transparent;
+        background-clip: padding-box;
+    }
+
+    *::-webkit-scrollbar-corner {
+        background: transparent;
+    }
 }
 
 @layer components {
@@ -118,12 +151,95 @@
         @apply ml-4 flex items-center rounded-lg bg-white/15 px-3 py-2 text-sm font-semibold text-white ring-1 ring-white/15;
     }
 
+    /* Dark panel scrollbars (sidebar nav) */
+    .scrollbar-sidebar {
+        scrollbar-width: thin;
+        scrollbar-color: rgb(255 255 255 / 0.28) transparent;
+    }
+
+    .scrollbar-sidebar::-webkit-scrollbar {
+        width: 0.4rem;
+        height: 0.4rem;
+    }
+
+    .scrollbar-sidebar::-webkit-scrollbar-track {
+        background: transparent;
+        margin-block: 0.35rem;
+    }
+
+    .scrollbar-sidebar::-webkit-scrollbar-thumb {
+        background: rgb(255 255 255 / 0.22);
+        border-radius: 9999px;
+        border: 2px solid transparent;
+        background-clip: padding-box;
+    }
+
+    .scrollbar-sidebar::-webkit-scrollbar-thumb:hover {
+        background: rgb(255 255 255 / 0.4);
+        border: 2px solid transparent;
+        background-clip: padding-box;
+    }
+
+    /* Main content / table scroll areas */
+    .scrollbar-panel {
+        scrollbar-width: thin;
+        scrollbar-color: color-mix(in srgb, var(--color-brand-blue) 32%, transparent) transparent;
+    }
+
+    .scrollbar-panel::-webkit-scrollbar {
+        width: 0.5rem;
+        height: 0.5rem;
+    }
+
+    .scrollbar-panel::-webkit-scrollbar-track {
+        background: transparent;
+        margin-block: 0.25rem;
+    }
+
+    .scrollbar-panel::-webkit-scrollbar-thumb {
+        background: color-mix(in srgb, var(--color-brand-blue) 26%, transparent);
+        border-radius: 9999px;
+        border: 2px solid transparent;
+        background-clip: padding-box;
+    }
+
+    .scrollbar-panel::-webkit-scrollbar-thumb:hover {
+        background: color-mix(in srgb, var(--color-brand-orange) 55%, var(--color-brand-blue));
+        border: 2px solid transparent;
+        background-clip: padding-box;
+    }
+
     .stat-card {
         @apply relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm;
     }
 
     .table-wrap {
         @apply overflow-x-auto;
+        scrollbar-width: thin;
+        scrollbar-color: color-mix(in srgb, var(--color-brand-blue) 32%, transparent) transparent;
+    }
+
+    .table-wrap::-webkit-scrollbar {
+        width: 0.5rem;
+        height: 0.5rem;
+    }
+
+    .table-wrap::-webkit-scrollbar-track {
+        background: transparent;
+        margin-block: 0.25rem;
+    }
+
+    .table-wrap::-webkit-scrollbar-thumb {
+        background: color-mix(in srgb, var(--color-brand-blue) 26%, transparent);
+        border-radius: 9999px;
+        border: 2px solid transparent;
+        background-clip: padding-box;
+    }
+
+    .table-wrap::-webkit-scrollbar-thumb:hover {
+        background: color-mix(in srgb, var(--color-brand-orange) 55%, var(--color-brand-blue));
+        border: 2px solid transparent;
+        background-clip: padding-box;
     }
 
     .data-table {
@@ -211,20 +327,30 @@
     }
 
     .btn-enroll {
-        @apply relative inline-flex items-center justify-center gap-2 overflow-hidden rounded-xl bg-brand-orange px-5 py-3 text-sm font-bold text-white shadow-lg shadow-brand-orange/30 transition duration-200 hover:bg-brand-orange-dark focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus-visible:ring-offset-2;
-        animation: enroll-pulse 2.2s ease-in-out infinite;
+        @apply relative inline-flex items-center justify-center gap-2 overflow-hidden rounded-xl bg-brand-orange px-6 py-3.5 text-sm font-bold uppercase tracking-wide text-white shadow-lg shadow-brand-orange/40 transition duration-200 hover:bg-brand-orange-dark focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus-visible:ring-offset-2;
+        animation: enroll-pulse 1.8s ease-in-out infinite;
+    }
+
+    .btn-enroll::after {
+        content: '';
+        position: absolute;
+        inset: -3px;
+        border-radius: 0.85rem;
+        border: 2px solid rgba(194, 65, 12, 0.55);
+        animation: enroll-ring 1.8s ease-in-out infinite;
+        pointer-events: none;
     }
 
     .btn-enroll-on-dark {
-        @apply shadow-brand-orange/40 ring-2 ring-white/30;
+        @apply shadow-brand-orange/45 ring-2 ring-white/35;
     }
 
     .btn-enroll-shine {
         position: absolute;
         inset: 0;
-        background: linear-gradient(110deg, transparent 25%, rgba(255, 255, 255, 0.35) 45%, transparent 65%);
+        background: linear-gradient(110deg, transparent 20%, rgba(255, 255, 255, 0.45) 48%, transparent 70%);
         transform: translateX(-120%);
-        animation: enroll-shine 2.4s ease-in-out infinite;
+        animation: enroll-shine 2s ease-in-out infinite;
     }
 
     .event-card {
@@ -473,18 +599,29 @@
 
 @keyframes enroll-pulse {
     0%, 100% {
-        box-shadow: 0 10px 24px rgba(194, 65, 12, 0.28);
-        transform: translateY(0);
+        box-shadow: 0 10px 22px rgba(194, 65, 12, 0.32);
+        transform: translateY(0) scale(1);
     }
     50% {
-        box-shadow: 0 14px 32px rgba(11, 93, 59, 0.35);
-        transform: translateY(-1px);
+        box-shadow: 0 16px 36px rgba(194, 65, 12, 0.55);
+        transform: translateY(-2px) scale(1.03);
+    }
+}
+
+@keyframes enroll-ring {
+    0%, 100% {
+        opacity: 0.35;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.95;
+        transform: scale(1.04);
     }
 }
 
 @keyframes enroll-shine {
-    0%, 35% { transform: translateX(-120%); }
-    60%, 100% { transform: translateX(120%); }
+    0%, 25% { transform: translateX(-130%); }
+    55%, 100% { transform: translateX(130%); }
 }
 
 @keyframes event-card-in {

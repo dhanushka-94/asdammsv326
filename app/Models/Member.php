@@ -105,6 +105,13 @@ class Member extends Authenticatable
             ->withTimestamps();
     }
 
+    public function invitedEvents(): BelongsToMany
+    {
+        return $this->belongsToMany(Event::class, 'event_invitations')
+            ->withPivot(['invited_by', 'invited_at'])
+            ->withTimestamps();
+    }
+
     public function attendances(): HasMany
     {
         return $this->hasMany(EventAttendance::class)->latest('checked_in_at');
@@ -135,11 +142,7 @@ class Member extends Authenticatable
             return 'member.password.edit';
         }
 
-        if (Event::hasAvailableForMembers()) {
-            return 'member.events.index';
-        }
-
-        return 'member.profile';
+        return 'member.home';
     }
 
     public function displayName(): string

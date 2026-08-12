@@ -75,6 +75,58 @@ class Event extends Model
             ->withTimestamps();
     }
 
+    /** Members invited to this event (eligible to see/register). */
+    public function invitedMembers(): BelongsToMany
+    {
+        return $this->belongsToMany(Member::class, 'event_invitations')
+            ->withPivot(['invited_by', 'invited_at'])
+            ->withTimestamps()
+            ->orderBy('full_name');
+    }
+
+    public function invitations(): HasMany
+    {
+        return $this->hasMany(EventInvitation::class);
+    }
+
+    public function isMemberInvited(?Member $member): bool
+    {
+        if (! $member) {
+            return false;
+        }
+
+        if ($this->relationLoaded('invitedMembers')) {
+            return $this->invitedMembers->contains('id', $member->id);
+        }
+
+        return $this->invitedMembers()->where('members.id', $member->id)->exists();
+    }
+
+    /** Active + invited members can see the event and invitations. */
+    public function isVisibleToMember(?Member $member): bool
+    {
+        return $this->isActive()
+            && $member
+            && $member->canLogin()
+            && $this->isMemberInvited($member);
+    }
+
+    /** Active system member + invited + enrollment still open. */
+    public function memberCanRegister(?Member $member): bool
+    {
+        return $this->isOpenForEnrollment()
+            && $member
+            && $member->canLogin()
+            && $this->isMemberInvited($member);
+    }
+
+    public function scopeVisibleToMember($query, Member $member)
+    {
+        return $query
+            ->where('status', 'active')
+            ->whereHas('invitedMembers', fn ($q) => $q->where('members.id', $member->id));
+    }
+
     public function isPhysical(): bool
     {
         return in_array($this->method, ['physical', 'both'], true);

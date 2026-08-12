@@ -106,12 +106,13 @@ class ActivityLogger
                 'admin.members.bulk',
                 'admin.members.events.kick',
                 'admin.members.re-accept',
+                'admin.members.qr.regenerate',
                 'admin.waiting-approvals.bulk',
                 'admin.rejected-members.bulk',
+                'admin.events.invites.update',
                 'member.events.enroll',
                 'member.events.unenroll',
                 'member.register.store',
-                'member.profile.update',
             ], true);
     }
 
@@ -141,6 +142,7 @@ class ActivityLogger
             'admin.members.events.kick' => ['updated', 'Removed a member from an event'],
             'admin.members.reset-password' => ['password_reset', 'Reset member password to default'],
             'admin.members.require-password-change' => ['password_reset', 'Required member to change password on next login'],
+            'admin.members.qr.regenerate' => ['updated', 'Regenerated membership QR'],
 
             // System users
             'admin.users.reset-password' => ['password_reset', 'Reset system user password to default'],
@@ -179,6 +181,7 @@ class ActivityLogger
             'admin.events.store' => ['created', 'Created an event'],
             'admin.events.update' => ['updated', 'Updated an event'],
             'admin.events.destroy' => ['deleted', 'Deleted an event'],
+            'admin.events.invites.update' => ['updated', 'Updated event invited members'],
             'member.events.enroll' => ['created', 'Enrolled in an event'],
             'member.events.unenroll' => ['deleted', 'Left an event'],
 

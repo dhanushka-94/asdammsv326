@@ -60,6 +60,7 @@
                     <div class="flex shrink-0 flex-wrap gap-2">
                         <a href="{{ route('admin.events.show', $event) }}" class="btn-outline">View details</a>
                         @if (auth()->user()->canManageEvents())
+                            <a href="{{ route('admin.events.invites.edit', $event) }}" class="btn-accent">Invite members</a>
                             <a href="{{ route('admin.events.edit', $event) }}" class="btn-secondary">Edit</a>
                         @endif
                     </div>

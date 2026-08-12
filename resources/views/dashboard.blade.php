@@ -147,7 +147,9 @@
             @endif
             <a href="{{ route('admin.reports.index') }}" class="btn-outline w-full justify-start">Analytics reports</a>
             <a href="{{ route('admin.events.index') }}" class="btn-outline w-full justify-start">ASDA Events</a>
-            <a href="{{ route('admin.settings.edit') }}" class="btn-outline w-full justify-start">System settings</a>
+            @if (auth()->user()->canManageSettings())
+                <a href="{{ route('admin.settings.edit') }}" class="btn-outline w-full justify-start">System settings</a>
+            @endif
             @if (auth()->user()->canManageUsers())
                 <a href="{{ route('admin.users.index') }}" class="btn-outline w-full justify-start">System users</a>
             @endif

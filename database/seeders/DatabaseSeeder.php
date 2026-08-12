@@ -100,6 +100,7 @@ class DatabaseSeeder extends Seeder
             'event_attendances',
             'event_enrollment_answers',
             'event_enrollments',
+            'event_invitations',
             'event_day_question_options',
             'event_day_questions',
             'event_day_sessions',
@@ -160,6 +161,8 @@ class DatabaseSeeder extends Seeder
             'The ASDA Member Management System is temporarily unavailable while we perform maintenance. Please check back soon.'
         );
         AppSettings::setMemberRegistrationEnabled(true);
+        AppSettings::setDeveloperCredits('Developed by 1920 & TFBS - Department of Agriculture');
+        AppSettings::setFooterCopyright('Annual Symposium of the Department of Agriculture (ASDA). All rights reserved.');
     }
 
     private function seedDesignations(): void

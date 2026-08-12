@@ -1,9 +1,9 @@
 @extends('layouts.app')
 
-@section('title', 'Events')
+@section('title', 'Event Register')
 
 @section('body')
-<div class="relative min-h-screen overflow-hidden bg-surface">
+<div class="relative flex min-h-screen flex-col overflow-hidden bg-surface">
     <div class="pointer-events-none absolute inset-0">
         <div class="absolute -left-24 -top-24 h-80 w-80 rounded-full bg-brand-green/10 blur-3xl"></div>
         <div class="absolute -right-20 top-1/4 h-72 w-72 rounded-full bg-brand-orange/10 blur-3xl"></div>
@@ -16,11 +16,11 @@
                 <img src="{{ asset('images/asda-logo.png') }}" alt="ASDA" class="h-10 w-auto object-contain">
                 <div>
                     <p class="font-display text-sm font-bold text-ink">ASDA MMS</p>
-                    <p class="text-xs text-muted">Events</p>
+                    <p class="text-xs text-muted">Event Register</p>
                 </div>
             </div>
             <div class="flex flex-wrap items-center gap-2">
-                <a href="{{ route('member.profile') }}" class="btn-outline">My profile</a>
+                <a href="{{ route('member.home') }}" class="btn-outline">Portal home</a>
                 <form method="POST" action="{{ route('member.logout') }}">
                     @csrf
                     <button type="submit" class="btn-outline">Sign out</button>
@@ -29,7 +29,7 @@
         </div>
     </header>
 
-    <main class="relative mx-auto max-w-5xl px-4 py-6 sm:px-6">
+    <main class="relative mx-auto w-full max-w-5xl flex-1 px-4 py-6 sm:px-6">
         @if (session('success'))
             <div class="alert-success">{{ session('success') }}</div>
         @endif
@@ -37,10 +37,10 @@
             <div class="alert-error">{{ session('error') }}</div>
         @endif
 
-        <div class="mb-8 overflow-hidden rounded-3xl bg-gradient-to-br from-brand-blue via-brand-green to-brand-orange p-6 text-white shadow-lg sm:p-8">
-            <p class="text-xs font-semibold uppercase tracking-[0.2em] text-white/80">ASDA Event Pool</p>
-            <h1 class="mt-2 font-display text-3xl font-bold tracking-tight">Available events</h1>
-            <p class="mt-2 max-w-xl text-sm text-white/85">Open an event to answer the questionnaire, then register.</p>
+        <div class="mb-8 overflow-hidden rounded-3xl bg-gradient-to-br from-brand-blue to-brand-blue-dark p-6 text-white shadow-lg sm:p-8">
+            <p class="text-xs font-semibold uppercase tracking-[0.2em] text-white/80">Events</p>
+            <h1 class="mt-2 font-display text-3xl font-bold tracking-tight">Event Register</h1>
+            <p class="mt-2 max-w-xl text-sm text-white/85">Open an event, answer the questions, then register.</p>
         </div>
 
         <div class="space-y-5">
@@ -151,9 +151,9 @@
 
                         <div class="mt-5 flex flex-col gap-3 border-t border-slate-200/70 pt-4 sm:flex-row sm:items-center sm:justify-between">
                             <p class="text-xs font-semibold text-muted">{{ $event->methodLabel() }}</p>
-                            <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+                            <div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
                                 <a href="{{ route('member.events.show', $event) }}" class="btn-secondary justify-center">Full details</a>
-                                @if ($event->isOpenForEnrollment())
+                                @if ($event->memberCanRegister($member))
                                     @if ($isEnrolled)
                                         <form method="POST" action="{{ route('member.events.unenroll', $event) }}" data-confirm="Leave {{ $event->name }}? Your registration and answers will be removed.">
                                             @csrf
@@ -161,11 +161,17 @@
                                             <button type="submit" class="btn-outline w-full justify-center sm:w-auto">Leave event</button>
                                         </form>
                                     @else
-                                        <a href="{{ route('member.events.show', $event) }}#enroll-form" class="btn-enroll w-full justify-center sm:w-auto">
+                                        <a href="{{ route('member.events.show', $event) }}#enroll-form" class="btn-enroll w-full justify-center sm:min-w-[10.5rem] sm:w-auto">
                                             <span class="btn-enroll-shine" aria-hidden="true"></span>
-                                            <span class="relative z-10">Register now</span>
+                                            <span class="relative z-10">Register</span>
                                         </a>
                                     @endif
+                                @elseif ($isEnrolled)
+                                    <form method="POST" action="{{ route('member.events.unenroll', $event) }}" data-confirm="Leave {{ $event->name }}? Your registration and answers will be removed.">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="btn-outline w-full justify-center sm:w-auto">Leave event</button>
+                                    </form>
                                 @endif
                             </div>
                         </div>
@@ -175,10 +181,12 @@
                 <div class="rounded-3xl border border-dashed border-slate-300 bg-white/80 px-6 py-16 text-center">
                     <p class="font-display text-lg font-bold text-ink">No events available</p>
                     <p class="mt-2 text-sm text-muted">Check back later for new ASDA events.</p>
-                    <a href="{{ route('member.profile') }}" class="btn-primary mt-6">Go to my profile</a>
+                    <a href="{{ route('member.home') }}" class="btn-primary mt-6">Back to portal</a>
                 </div>
             @endforelse
         </div>
     </main>
+
+    <x-member-footer />
 </div>
 @endsection

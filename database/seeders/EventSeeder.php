@@ -208,18 +208,33 @@ class EventSeeder extends Seeder
             ->where('registration_status', 'approved')
             ->where('status', 'active')
             ->orderBy('id')
-            ->limit(800)
             ->pluck('id');
 
-        DB::transaction(function () use ($main, $workshop, $webinar, $memberIds, $adminId): void {
-            foreach ($memberIds as $index => $memberId) {
+        // Invite most active approved members; leave a couple uninvited for testing.
+        $inviteIds = $memberIds->take(max(0, $memberIds->count() - 2))->all();
+        $invitePayload = [];
+        $now = now();
+        foreach ($inviteIds as $memberId) {
+            $invitePayload[$memberId] = [
+                'invited_by' => $adminId,
+                'invited_at' => $now->copy()->subDays(3),
+            ];
+        }
+        if ($invitePayload !== []) {
+            $main->invitedMembers()->attach($invitePayload);
+            $workshop->invitedMembers()->attach(array_slice($invitePayload, 0, 8, true));
+            $webinar->invitedMembers()->attach(array_slice($invitePayload, 0, 10, true));
+        }
+
+        DB::transaction(function () use ($main, $workshop, $webinar, $inviteIds, $adminId): void {
+            foreach ($inviteIds as $index => $memberId) {
                 $mode = $index % 3 === 0 ? 'online' : 'physical';
-                $isKickedSample = $index >= 790 && $index < 800;
+                $isKickedSample = $index === count($inviteIds) - 1 && count($inviteIds) > 3;
 
                 $enrollment = EventEnrollment::query()->create([
                     'event_id' => $main->id,
                     'member_id' => $memberId,
-                    'enrolled_at' => now()->subDays(($index % 40) + 1),
+                    'enrolled_at' => now()->subDays(($index % 10) + 1),
                     'participation_mode' => $mode,
                     'kicked_at' => $isKickedSample ? now()->subDays(2) : null,
                     'kick_reason' => $isKickedSample ? 'Sample removal for testing.' : null,
@@ -230,21 +245,21 @@ class EventSeeder extends Seeder
                     $this->seedAnswers($enrollment, $main, $index);
                 }
 
-                if ($index < 180) {
+                if ($index < 8) {
                     $workshopEnrollment = EventEnrollment::query()->create([
                         'event_id' => $workshop->id,
                         'member_id' => $memberId,
-                        'enrolled_at' => now()->subDays(($index % 14) + 1),
+                        'enrolled_at' => now()->subDays(($index % 7) + 1),
                         'participation_mode' => 'physical',
                     ]);
                     $this->seedAnswers($workshopEnrollment, $workshop, $index);
                 }
 
-                if ($index < 260) {
+                if ($index < 10) {
                     $webinarEnrollment = EventEnrollment::query()->create([
                         'event_id' => $webinar->id,
                         'member_id' => $memberId,
-                        'enrolled_at' => now()->subDays(($index % 12) + 1),
+                        'enrolled_at' => now()->subDays(($index % 5) + 1),
                         'participation_mode' => 'online',
                     ]);
                     $this->seedAnswers($webinarEnrollment, $webinar, $index);
@@ -252,10 +267,10 @@ class EventSeeder extends Seeder
             }
         });
 
-        $this->seedCheckIns($main, $receptionIds, $adminId, 450);
-        $this->seedCheckIns($workshop, $receptionIds, $adminId, 120);
+        $this->seedCheckIns($main, $receptionIds, $adminId, 12);
+        $this->seedCheckIns($workshop, $receptionIds, $adminId, 5);
 
-        $this->command?->info('Seeded 3 events with venues, days, sessions, questionnaires, enrollments, and check-ins.');
+        $this->command?->info('Seeded 3 events with venues, days, sessions, questionnaires, invites, enrollments, and check-ins.');
     }
 
     /**

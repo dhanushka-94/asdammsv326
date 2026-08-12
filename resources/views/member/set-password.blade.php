@@ -63,6 +63,8 @@
             @csrf
             <button type="submit" class="text-sm font-semibold text-brand-blue hover:underline">Sign out</button>
         </form>
+
+        <x-developer-credits class="mt-8 text-center" :show-copyright="true" />
     </div>
 </div>
 @endsection

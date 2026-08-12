@@ -14,6 +14,10 @@ class AppSettings
 
     public const MEMBER_REGISTRATION_ENABLED = 'member_registration_enabled';
 
+    public const DEVELOPER_CREDITS = 'developer_credits';
+
+    public const FOOTER_COPYRIGHT = 'footer_copyright';
+
     private const CACHE_TTL_SECONDS = 60;
 
     public static function get(string $key, ?string $default = null): ?string
@@ -88,6 +92,32 @@ class AppSettings
     public static function setMemberRegistrationEnabled(bool $enabled): void
     {
         self::set(self::MEMBER_REGISTRATION_ENABLED, $enabled ? '1' : '0');
+    }
+
+    public static function developerCredits(): string
+    {
+        return (string) self::get(
+            self::DEVELOPER_CREDITS,
+            'Developed by 1920 & TFBS - Department of Agriculture'
+        );
+    }
+
+    public static function setDeveloperCredits(string $credits): void
+    {
+        self::set(self::DEVELOPER_CREDITS, $credits);
+    }
+
+    public static function footerCopyright(): string
+    {
+        return (string) self::get(
+            self::FOOTER_COPYRIGHT,
+            'Annual Symposium of the Department of Agriculture (ASDA). All rights reserved.'
+        );
+    }
+
+    public static function setFooterCopyright(string $copyright): void
+    {
+        self::set(self::FOOTER_COPYRIGHT, $copyright);
     }
 
     private static function cacheKey(string $key): string

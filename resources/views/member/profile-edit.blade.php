@@ -3,14 +3,17 @@
 @section('title', 'Edit Profile')
 
 @section('body')
-<div class="min-h-screen bg-surface px-4 py-8 sm:px-6">
-    <div class="mx-auto max-w-3xl">
+<div class="flex min-h-screen flex-col bg-surface px-4 py-8 sm:px-6">
+    <div class="mx-auto w-full max-w-3xl flex-1">
         <div class="mb-6 flex items-center justify-between gap-3">
             <div>
-                <h1 class="font-display text-2xl font-bold text-ink">Edit profile</h1>
+                <h1 class="font-display text-2xl font-bold text-ink">Update your details</h1>
                 <p class="text-sm text-muted">{{ $member->displayName() }} · {{ $member->unique_id }}</p>
             </div>
-            <a href="{{ route('member.profile') }}" class="btn-outline">Back</a>
+            <div class="flex flex-wrap gap-2">
+                <a href="{{ route('member.home') }}" class="btn-outline">Portal home</a>
+                <a href="{{ route('member.profile') }}" class="btn-outline">My profile</a>
+            </div>
         </div>
 
         <form method="POST" action="{{ route('member.profile.update') }}" enctype="multipart/form-data" class="card p-5 sm:p-8">
@@ -130,5 +133,7 @@
             </div>
         </form>
     </div>
+
+    <x-member-footer class="mt-8 -mx-4 sm:-mx-6" />
 </div>
 @endsection

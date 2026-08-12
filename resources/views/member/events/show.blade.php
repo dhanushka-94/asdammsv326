@@ -13,7 +13,7 @@
         default => 'from-slate-600 via-slate-700 to-slate-800',
     };
 @endphp
-<div class="relative min-h-screen overflow-hidden bg-surface">
+<div class="relative flex min-h-screen flex-col overflow-hidden bg-surface">
     <div class="pointer-events-none absolute inset-0">
         <div class="absolute -left-24 -top-24 h-80 w-80 rounded-full bg-brand-green/10 blur-3xl"></div>
         <div class="absolute -right-16 top-1/3 h-72 w-72 rounded-full bg-brand-orange/10 blur-3xl"></div>
@@ -29,13 +29,14 @@
                 </div>
             </div>
             <div class="flex flex-wrap items-center gap-2">
-                <a href="{{ route('member.events.index') }}" class="btn-outline">All events</a>
+                <a href="{{ route('member.home') }}" class="btn-outline">Portal home</a>
+                <a href="{{ route('member.events.index') }}" class="btn-outline">Event Register</a>
                 <a href="{{ route('member.profile') }}" class="btn-outline">My profile</a>
             </div>
         </div>
     </header>
 
-    <main class="relative mx-auto max-w-5xl space-y-5 px-4 py-6 sm:px-6">
+    <main class="relative mx-auto w-full max-w-5xl flex-1 space-y-5 px-4 py-6 sm:px-6">
         @if (session('success'))
             <div class="alert-success">{{ session('success') }}</div>
         @endif
@@ -72,7 +73,7 @@
                 <p class="mt-3 text-base text-white/90">{{ $scheduleText }}</p>
 
                 <div class="mt-6 flex flex-wrap gap-2">
-                    @if ($event->isOpenForEnrollment())
+                    @if ($canRegister)
                         @if ($enrolled)
                             <form method="POST" action="{{ route('member.events.unenroll', $event) }}" data-confirm="Leave {{ $event->name }}? Your registration and answers will be removed.">
                                 @csrf
@@ -88,6 +89,12 @@
                                 <span class="relative z-10">Register for this event</span>
                             </a>
                         @endif
+                    @elseif ($enrolled)
+                        <form method="POST" action="{{ route('member.events.unenroll', $event) }}" data-confirm="Leave {{ $event->name }}? Your registration and answers will be removed.">
+                            @csrf
+                            @method('DELETE')
+                            <button type="submit" class="inline-flex items-center justify-center rounded-xl border border-white/40 bg-white/10 px-5 py-2.5 text-sm font-semibold text-white backdrop-blur transition hover:bg-white/20">Leave event</button>
+                        </form>
                     @else
                         <p class="rounded-xl bg-white/10 px-4 py-2 text-sm text-white/85">Registration is closed for this event.</p>
                     @endif
@@ -113,7 +120,7 @@
             </div>
             <div class="rounded-2xl border border-slate-200 bg-white p-4">
                 <p class="text-xs font-semibold uppercase tracking-wide text-muted">Registration</p>
-                <p class="mt-1 font-semibold text-ink">{{ $enrolled ? 'You are registered' : ($event->isOpenForEnrollment() ? 'Open' : 'Closed') }}</p>
+                <p class="mt-1 font-semibold text-ink">{{ $enrolled ? 'You are registered' : ($canRegister ? 'Open' : 'Closed') }}</p>
             </div>
         </section>
 
@@ -236,7 +243,7 @@
             </section>
         @endif
 
-        @if ($event->isOpenForEnrollment() && ! $enrolled)
+        @if ($canRegister && ! $enrolled)
             <section id="enroll-form" class="card p-5 sm:p-8">
                 <h2 class="font-display text-base font-bold text-ink">Register for {{ $event->name }}</h2>
                 <p class="mt-1 text-sm text-muted">Confirm how you will join. All questionnaire answers are required before registration.</p>
@@ -347,5 +354,7 @@
             </section>
         @endif
     </main>
+
+    <x-member-footer />
 </div>
 @endsection

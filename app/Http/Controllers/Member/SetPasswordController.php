@@ -21,7 +21,7 @@ class SetPasswordController extends Controller
         }
 
         if (! $member->must_change_password) {
-            return redirect()->route('member.profile');
+            return redirect()->route($member->homeRoute());
         }
 
         return view('member.set-password', compact('member'));
@@ -36,7 +36,7 @@ class SetPasswordController extends Controller
         }
 
         if (! $member->must_change_password) {
-            return redirect()->route('member.profile');
+            return redirect()->route($member->homeRoute());
         }
 
         $data = $request->validate([
@@ -65,7 +65,7 @@ class SetPasswordController extends Controller
         ]);
 
         return redirect()
-            ->route('member.profile')
+            ->route($member->homeRoute())
             ->with('success', 'Password updated successfully. Welcome to ASDA MMS.');
     }
 }

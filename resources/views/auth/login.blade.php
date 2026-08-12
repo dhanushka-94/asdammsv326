@@ -90,9 +90,7 @@
             <p class="mb-2 text-xs leading-relaxed text-muted sm:text-sm lg:hidden">
                 Annual Symposium of the Department of Agriculture (ASDA) - Member Management System
             </p>
-            <p class="text-xs font-semibold text-brand-blue">
-                Developed by 1920 &amp; TFBS - Department of Agriculture
-            </p>
+            <x-developer-credits />
         </footer>
     </div>
 </div>

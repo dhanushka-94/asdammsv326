@@ -3,7 +3,7 @@
 @section('title', 'My Profile')
 
 @section('body')
-<div class="min-h-screen bg-surface">
+<div class="flex min-h-screen flex-col bg-surface">
     <header class="border-b border-slate-200 bg-white">
         <div class="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
             <div class="flex items-center gap-3">
@@ -14,8 +14,8 @@
                 </div>
             </div>
             <div class="flex items-center gap-2">
-                <a href="{{ route('member.events.index') }}" class="btn-outline">Event pool</a>
-                <a href="{{ route('member.profile.edit') }}" class="btn-secondary">Edit profile</a>
+                <a href="{{ route('member.home') }}" class="btn-outline">Portal home</a>
+                <a href="{{ route('member.profile.edit') }}" class="btn-secondary">Update Profile</a>
                 <form method="POST" action="{{ route('member.logout') }}">
                     @csrf
                     <button type="submit" class="btn-outline">Sign out</button>
@@ -24,10 +24,19 @@
         </div>
     </header>
 
-    <main class="mx-auto max-w-5xl px-4 py-6 sm:px-6">
+    <main class="mx-auto w-full max-w-5xl flex-1 px-4 py-6 sm:px-6">
         @if (session('success'))
             <div class="alert-success">{{ session('success') }}</div>
         @endif
+
+        <a href="{{ route('member.profile.edit') }}" class="mb-5 flex items-center justify-between gap-4 rounded-2xl border border-brand-green/20 bg-gradient-to-r from-brand-green to-brand-green-dark px-5 py-4 text-white shadow-md shadow-brand-green/15 transition hover:-translate-y-0.5 hover:shadow-lg sm:px-6">
+            <div>
+                <p class="text-xs font-semibold uppercase tracking-[0.18em] text-white/75">Profile</p>
+                <p class="mt-1 font-display text-lg font-bold sm:text-xl">Update Profile</p>
+                <p class="mt-1 text-sm text-white/85">Edit contact details, organization info, and password.</p>
+            </div>
+            <span class="shrink-0 rounded-xl bg-white/15 px-3 py-2 text-sm font-semibold ring-1 ring-white/20">Open →</span>
+        </a>
 
         <div class="card overflow-hidden">
             <div class="bg-gradient-to-r from-brand-blue via-brand-green to-brand-orange px-5 py-8 sm:px-8">
@@ -113,5 +122,7 @@
             </div>
         </div>
     </main>
+
+    <x-member-footer />
 </div>
 @endsection

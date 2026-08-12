@@ -22,7 +22,7 @@ class EventPoolController extends Controller
         $member = Auth::guard('member')->user();
 
         $events = Event::query()
-            ->where('status', 'active')
+            ->visibleToMember($member)
             ->with(['venues', 'days.sessions'])
             ->withCount('activeEnrollments')
             ->orderBy('start_date')
@@ -40,12 +40,13 @@ class EventPoolController extends Controller
 
     public function show(Event $event): View|RedirectResponse
     {
-        if (! $event->isActive()) {
+        $member = Auth::guard('member')->user();
+
+        if (! $event->isVisibleToMember($member)) {
             return redirect()->route('member.events.index')
-                ->with('error', 'This event is not available in the pool.');
+                ->with('error', 'This event is not available. Only invited active members can view it.');
         }
 
-        $member = Auth::guard('member')->user();
         $event->load(['venues', 'days.sessions', 'days.questions.options']);
         $enrollment = EventEnrollment::query()
             ->active()
@@ -55,20 +56,17 @@ class EventPoolController extends Controller
             ->first();
 
         $enrolled = $enrollment !== null;
+        $canRegister = $event->memberCanRegister($member);
 
-        return view('member.events.show', compact('event', 'enrolled', 'enrollment', 'member'));
+        return view('member.events.show', compact('event', 'enrolled', 'enrollment', 'member', 'canRegister'));
     }
 
     public function enroll(Request $request, Event $event): RedirectResponse
     {
         $member = Auth::guard('member')->user();
 
-        if (! $event->isOpenForEnrollment()) {
-            return back()->with('error', 'This event is not open for enrollment.');
-        }
-
-        if (! $member->canLogin()) {
-            return back()->with('error', 'Only active approved members can enroll.');
+        if (! $event->memberCanRegister($member)) {
+            return back()->with('error', 'You are not eligible to register. You must be an active invited member and enrollment must be open.');
         }
 
         $event->load(['days.questions.options']);
@@ -171,6 +169,11 @@ class EventPoolController extends Controller
     public function unenroll(Event $event): RedirectResponse
     {
         $member = Auth::guard('member')->user();
+
+        if (! $event->isVisibleToMember($member)) {
+            return redirect()->route('member.events.index')
+                ->with('error', 'This event is not available.');
+        }
 
         EventEnrollment::query()
             ->active()

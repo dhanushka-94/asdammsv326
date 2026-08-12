@@ -4,9 +4,6 @@
 @section('meta_robots', 'noindex, nofollow, noarchive, nosnippet')
 
 @section('body')
-@php
-    $asdaAcronym = '<span class="asda-mark">A</span><span class="asda-mark">S</span><span class="asda-mark">D</span><span class="asda-mark">A</span>';
-@endphp
 
 <div class="login-shell is-ready">
     <div class="login-bg" aria-hidden="true">
@@ -88,14 +85,10 @@
         </div>
 
         <footer class="mt-6 border-t border-slate-200/80 pt-4 pb-1 text-center sm:mt-8 sm:pt-5">
-            <p class="text-xs font-semibold text-brand-blue sm:text-sm">
-                Developed by 1920 &amp; TFBS - Department of Agriculture
-            </p>
-            <p class="mt-1.5 text-[11px] leading-relaxed text-muted sm:text-xs">
-                &copy; {{ now()->year }} Annual Symposium of the Department of Agriculture
-                ({!! $asdaAcronym !!}).
-                All rights reserved.
-            </p>
+            <x-developer-credits
+                :show-copyright="true"
+                credit-class="text-xs font-semibold text-brand-blue sm:text-sm"
+            />
         </footer>
     </div>
 </div>

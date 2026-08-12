@@ -11,6 +11,7 @@ use App\Http\Controllers\Admin\CheckInItemController;
 use App\Http\Controllers\Admin\CheckedInMemberController;
 use App\Http\Controllers\Admin\DesignationController;
 use App\Http\Controllers\Admin\EventController as AdminEventController;
+use App\Http\Controllers\Admin\EventInviteController;
 use App\Http\Controllers\Admin\InstituteController;
 use App\Http\Controllers\Admin\MemberCategoryController;
 use App\Http\Controllers\Admin\MemberController as AdminMemberController;
@@ -29,6 +30,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Member\EventPoolController;
 use App\Http\Controllers\Member\EventInvitationController;
 use App\Http\Controllers\Member\LoginController as MemberLoginController;
+use App\Http\Controllers\Member\PortalController;
 use App\Http\Controllers\Member\ProfileController;
 use App\Http\Controllers\Member\RegistrationController;
 use App\Http\Controllers\Member\SetPasswordController as MemberSetPasswordController;
@@ -63,6 +65,8 @@ Route::middleware(['auth:member', 'activity'])->prefix('member')->name('member.'
         Route::put('/set-password', [MemberSetPasswordController::class, 'update'])->name('password.update');
 
         Route::middleware('member.password')->group(function () {
+            Route::get('/home', [PortalController::class, 'home'])->name('home');
+
             Route::get('/profile', [ProfileController::class, 'show'])->name('profile');
             Route::get('/profile/edit', [ProfileController::class, 'edit'])->name('profile.edit');
             Route::put('/profile', [ProfileController::class, 'update'])->name('profile.update');
@@ -73,6 +77,9 @@ Route::middleware(['auth:member', 'activity'])->prefix('member')->name('member.'
             Route::get('/events/{event}', [EventPoolController::class, 'show'])->name('events.show');
             Route::post('/events/{event}/enroll', [EventPoolController::class, 'enroll'])->name('events.enroll');
             Route::delete('/events/{event}/unenroll', [EventPoolController::class, 'unenroll'])->name('events.unenroll');
+
+            Route::get('/invitations/letter', [EventInvitationController::class, 'letterIndex'])->name('invitations.letter');
+            Route::get('/invitations/card', [EventInvitationController::class, 'cardIndex'])->name('invitations.card');
             Route::get('/events/{event}/invitation/letter', [EventInvitationController::class, 'letter'])->name('events.invitation.letter');
             Route::get('/events/{event}/invitation/card', [EventInvitationController::class, 'card'])->name('events.invitation.card');
         });
@@ -154,6 +161,10 @@ Route::prefix('admin')->name('admin.')->group(function () {
                     Route::get('events/{event}/edit', [AdminEventController::class, 'edit'])->name('events.edit');
                     Route::put('events/{event}', [AdminEventController::class, 'update'])->name('events.update');
                     Route::delete('events/{event}', [AdminEventController::class, 'destroy'])->name('events.destroy');
+                    Route::get('events/{event}/invites', [EventInviteController::class, 'edit'])->name('events.invites.edit');
+                    Route::put('events/{event}/invites', [EventInviteController::class, 'update'])->name('events.invites.update');
+                    Route::post('events/{event}/invites/{member}', [EventInviteController::class, 'invite'])->name('events.invites.invite');
+                    Route::delete('events/{event}/invites/{member}', [EventInviteController::class, 'remove'])->name('events.invites.remove');
                 });
 
                 Route::get('members', [AdminMemberController::class, 'index'])->name('members.index');
@@ -244,8 +255,8 @@ Route::prefix('admin')->name('admin.')->group(function () {
                     Route::delete('check-in-items/{check_in_item}', [CheckInItemController::class, 'destroy'])->name('check-in-items.destroy');
                 });
 
-                Route::get('settings', [SettingsController::class, 'edit'])->name('settings.edit');
                 Route::middleware('role:'.UserRole::SUPER_ADMIN)->group(function () {
+                    Route::get('settings', [SettingsController::class, 'edit'])->name('settings.edit');
                     Route::put('settings', [SettingsController::class, 'update'])->name('settings.update');
                     Route::resource('users', UserController::class);
                     Route::post('users/{user}/reset-password', [UserController::class, 'resetPassword'])->name('users.reset-password');

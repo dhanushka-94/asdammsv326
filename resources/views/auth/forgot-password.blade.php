@@ -54,9 +54,7 @@
             </div>
         </div>
 
-        <p class="mt-8 text-center text-xs font-semibold text-brand-blue">
-            Developed by 1920 &amp; TFBS - Department of Agriculture
-        </p>
+        <x-developer-credits class="mt-8 text-center" />
     </div>
 </div>
 @endsection

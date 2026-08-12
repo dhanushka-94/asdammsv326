@@ -1,12 +1,12 @@
 @extends('layouts.app')
 
 @section('body')
-<div class="relative min-h-screen lg:flex">
+<div class="relative flex h-dvh flex-col overflow-hidden lg:flex-row">
     <div id="sidebar-overlay" class="fixed inset-0 z-40 hidden bg-brand-blue-dark/50 backdrop-blur-sm lg:hidden"></div>
 
     <aside id="app-sidebar"
-        class="fixed inset-y-0 left-0 z-50 flex w-72 -translate-x-full flex-col bg-brand-blue text-white transition-transform duration-300 lg:static lg:translate-x-0">
-        <div class="flex items-center justify-between border-b border-white/10 px-4 py-4">
+        class="fixed inset-y-0 left-0 z-50 flex w-72 -translate-x-full flex-col bg-brand-blue text-white transition-transform duration-300 lg:static lg:h-full lg:shrink-0 lg:translate-x-0">
+        <div class="flex shrink-0 items-center justify-between border-b border-white/10 px-4 py-4">
             <div class="flex min-w-0 items-center gap-3">
                 <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white p-1.5 shadow-sm">
                     <img src="{{ asset('images/asda-logo.png') }}" alt="ASDA" class="h-full w-full object-contain">
@@ -21,7 +21,7 @@
             </button>
         </div>
 
-        <nav class="flex-1 space-y-1 overflow-y-auto px-3 py-5">
+        <nav class="scrollbar-sidebar min-h-0 flex-1 space-y-1 overflow-y-auto px-3 py-5">
             @if (auth()->user()->isReception())
                 <p class="mb-2 px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-400">Attendance</p>
                 <a href="{{ route('admin.attendance.index') }}" class="{{ request()->routeIs('admin.attendance.*') ? 'sidebar-link-active' : 'sidebar-link' }}">
@@ -106,42 +106,61 @@
                         <svg data-sidebar-dropdown-chevron class="h-4 w-4 shrink-0 rotate-180 transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
                     </button>
 
-                    <div data-sidebar-dropdown-panel class="mt-1 space-y-0.5 overflow-hidden">
-                        <a href="{{ route('admin.designations.index') }}" class="{{ request()->routeIs('admin.designations.*') ? 'sidebar-sublink-active' : 'sidebar-sublink' }}">
-                            Designations
-                        </a>
-                        <a href="{{ route('admin.member-categories.index') }}" class="{{ request()->routeIs('admin.member-categories.*') ? 'sidebar-sublink-active' : 'sidebar-sublink' }}">
-                            Member Categories
-                        </a>
-                        <a href="{{ route('admin.check-in-items.index') }}" class="{{ request()->routeIs('admin.check-in-items.*') ? 'sidebar-sublink-active' : 'sidebar-sublink' }}">
-                            Check-in Items
-                        </a>
-                        <a href="{{ route('admin.institutes.index') }}" class="{{ request()->routeIs('admin.institutes.*') ? 'sidebar-sublink-active' : 'sidebar-sublink' }}">
-                            Institutes
-                        </a>
-                        <a href="{{ route('admin.sub-institutes.index') }}" class="{{ request()->routeIs('admin.sub-institutes.*') ? 'sidebar-sublink-active' : 'sidebar-sublink' }}">
-                            Sub-institutes
-                        </a>
-                        <a href="{{ route('admin.sections.index') }}" class="{{ request()->routeIs('admin.sections.*') ? 'sidebar-sublink-active' : 'sidebar-sublink' }}">
-                            Sections
-                        </a>
-                        <a href="{{ route('admin.settings.edit') }}" class="{{ request()->routeIs('admin.settings.*') ? 'sidebar-sublink-active' : 'sidebar-sublink' }}">
-                            System Settings
-                        </a>
-                        @if (auth()->user()->canManageUsers())
-                            <a href="{{ route('admin.users.index') }}" class="{{ request()->routeIs('admin.users.*') ? 'sidebar-sublink-active' : 'sidebar-sublink' }}">
-                                System Users
+                    <div data-sidebar-dropdown-panel class="mt-1 space-y-3 overflow-hidden">
+                        <div class="space-y-0.5">
+                            <p class="px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400/80">Members</p>
+                            <a href="{{ route('admin.designations.index') }}" class="{{ request()->routeIs('admin.designations.*') ? 'sidebar-sublink-active' : 'sidebar-sublink' }}">
+                                Designations
                             </a>
-                            <a href="{{ route('admin.activity-logs.index') }}" class="{{ request()->routeIs('admin.activity-logs.*') ? 'sidebar-sublink-active' : 'sidebar-sublink' }}">
-                                Activity Log
+                            <a href="{{ route('admin.member-categories.index') }}" class="{{ request()->routeIs('admin.member-categories.*') ? 'sidebar-sublink-active' : 'sidebar-sublink' }}">
+                                Member Categories
                             </a>
+                        </div>
+
+                        <div class="space-y-0.5">
+                            <p class="px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400/80">Organization</p>
+                            <a href="{{ route('admin.institutes.index') }}" class="{{ request()->routeIs('admin.institutes.*') ? 'sidebar-sublink-active' : 'sidebar-sublink' }}">
+                                Institutes
+                            </a>
+                            <a href="{{ route('admin.sub-institutes.index') }}" class="{{ request()->routeIs('admin.sub-institutes.*') ? 'sidebar-sublink-active' : 'sidebar-sublink' }}">
+                                Sub-institutes
+                            </a>
+                            <a href="{{ route('admin.sections.index') }}" class="{{ request()->routeIs('admin.sections.*') ? 'sidebar-sublink-active' : 'sidebar-sublink' }}">
+                                Sections
+                            </a>
+                        </div>
+
+                        <div class="space-y-0.5">
+                            <p class="px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400/80">Events</p>
+                            <a href="{{ route('admin.check-in-items.index') }}" class="{{ request()->routeIs('admin.check-in-items.*') ? 'sidebar-sublink-active' : 'sidebar-sublink' }}">
+                                Check-in Items
+                            </a>
+                        </div>
+
+                        @if (auth()->user()->canManageSettings() || auth()->user()->canManageUsers())
+                            <div class="space-y-0.5">
+                                <p class="px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400/80">System</p>
+                                @if (auth()->user()->canManageSettings())
+                                    <a href="{{ route('admin.settings.edit') }}" class="{{ request()->routeIs('admin.settings.*') ? 'sidebar-sublink-active' : 'sidebar-sublink' }}">
+                                        System Settings
+                                    </a>
+                                @endif
+                                @if (auth()->user()->canManageUsers())
+                                    <a href="{{ route('admin.users.index') }}" class="{{ request()->routeIs('admin.users.*') ? 'sidebar-sublink-active' : 'sidebar-sublink' }}">
+                                        System Users
+                                    </a>
+                                    <a href="{{ route('admin.activity-logs.index') }}" class="{{ request()->routeIs('admin.activity-logs.*') ? 'sidebar-sublink-active' : 'sidebar-sublink' }}">
+                                        Activity Log
+                                    </a>
+                                @endif
+                            </div>
                         @endif
                     </div>
                 </div>
             @endif
         </nav>
 
-        <div class="border-t border-white/10 p-4">
+        <div class="mt-auto shrink-0 border-t border-white/10 p-4">
             <a href="{{ route('admin.profile.show') }}"
                class="mb-3 flex items-center gap-3 rounded-xl px-3 py-3 transition {{ request()->routeIs('admin.profile.*') ? 'bg-white/15 ring-1 ring-white/20' : 'bg-white/5 hover:bg-white/10' }}"
                title="View my profile">
@@ -167,8 +186,8 @@
         </div>
     </aside>
 
-    <div class="flex min-h-screen flex-1 flex-col">
-        <header class="sticky top-0 z-30 border-b border-slate-200/80 bg-white/90 backdrop-blur">
+    <div class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+        <header class="sticky top-0 z-30 shrink-0 border-b border-slate-200/80 bg-white/90 backdrop-blur">
             <div class="flex items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
                 <div class="flex items-center gap-3">
                     <button id="sidebar-open" type="button" class="rounded-xl border border-slate-200 p-2 text-muted hover:bg-slate-50 lg:hidden" aria-label="Open menu">
@@ -204,7 +223,7 @@
             </div>
         </header>
 
-        <main class="flex-1 px-4 py-6 sm:px-6 lg:px-8">
+        <main class="scrollbar-panel min-h-0 flex-1 overflow-y-auto px-4 py-6 sm:px-6 lg:px-8">
             @if (\App\Support\AppSettings::maintenanceMode())
                 <div class="mb-4 rounded-xl border border-brand-orange/20 bg-brand-orange-soft px-4 py-3 text-sm text-brand-orange">
                     Maintenance mode is ON — public site is blocked.
@@ -231,14 +250,12 @@
             @yield('content')
         </main>
 
-        <footer class="border-t border-slate-200/80 bg-white px-4 py-4 sm:px-6 lg:px-8">
+        <footer class="sticky bottom-0 z-20 shrink-0 border-t border-slate-200/80 bg-white/95 px-4 py-4 backdrop-blur sm:px-6 lg:px-8">
             <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <p class="max-w-3xl text-xs leading-relaxed text-muted">
                     Annual Symposium of the Department of Agriculture (ASDA) - Member Management System
                 </p>
-                <p class="shrink-0 text-xs font-semibold text-brand-blue">
-                    Developed by 1920 &amp; TFBS - Department of Agriculture
-                </p>
+                <x-developer-credits class="shrink-0" />
             </div>
         </footer>
     </div>

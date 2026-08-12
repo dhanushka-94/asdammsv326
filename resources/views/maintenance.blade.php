@@ -31,8 +31,8 @@
 
         <footer class="relative z-10 border-t border-slate-200/70 bg-white/70 px-4 py-4 backdrop-blur sm:px-6">
             <div class="mx-auto flex w-full max-w-3xl flex-col items-center gap-1 text-center text-xs text-muted sm:flex-row sm:justify-between sm:text-left">
-                <p>&copy; {{ now()->year }} Annual Symposium of the Department of Agriculture (ASDA)</p>
-                <p class="font-semibold text-brand-blue">Developed by 1920 &amp; TFBS - Department of Agriculture</p>
+                <p>&copy; {{ now()->year }} {{ \App\Support\AppSettings::footerCopyright() }}</p>
+                <x-developer-credits credit-class="font-semibold text-brand-blue" />
             </div>
         </footer>
     </div>
